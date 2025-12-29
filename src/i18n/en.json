@@ -1,0 +1,25 @@
+{
+  "appName": "Time Garden",
+  "chooseCharacter": "Choose Your Gardener",
+  "chooseCharacterSubtitle": "Who will grow your garden?",
+  "boy": "Ali",
+  "girl": "Ayşe",
+  "continue": "Continue",
+  "characterChangeInfo": "You can change your character later from the settings menu.",
+  "garden": "Garden",
+  "prayerTimes": {
+    "fajr": "Fajr",
+    "dhuhr": "Dhuhr",
+    "asr": "Asr",
+    "maghrib": "Maghrib",
+    "isha": "Isha"
+  },
+  "states": {
+    "seed": "Seed",
+    "sprout": "Sprout",
+    "flower": "Flower"
+  },
+  "completed": "Completed",
+  "tapToComplete": "Tap to complete"
+}
+

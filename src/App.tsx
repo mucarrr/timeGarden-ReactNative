@@ -1,0 +1,169 @@
+import 'react-native-gesture-handler';
+import React, { useState, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import OnboardingScreen from './screens/OnboardingScreen';
+import GardenScreen from './screens/GardenScreen';
+import LoadingScreen from './screens/LoadingScreen';
+import SignUpScreen from './screens/SignUpScreen';
+import WelcomeScreen from './screens/WelcomeScreen';
+import ErrorBoundary from './components/ErrorBoundary';
+import { GardenState, Character, Language } from './types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  loadGardenState,
+  saveGardenState,
+  getDefaultGardenState,
+} from './utils/storage';
+import { detectLanguage } from './utils/languageDetector';
+import { changeLanguage } from './i18n';
+import './i18n';
+
+const Stack = createStackNavigator();
+
+const App: React.FC = () => {
+  const [gardenState, setGardenState] = useState<GardenState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
+  const initializeApp = async () => {
+    try {
+      // TEST: AsyncStorage'ı temizle (sadece test için, sonra kaldırılacak)
+      await AsyncStorage.clear();
+      console.log('AsyncStorage cleared for testing');
+      
+      const detectedLang = await detectLanguage();
+      changeLanguage(detectedLang);
+
+      const savedState = await loadGardenState();
+
+      if (savedState) {
+        setGardenState(savedState);
+      } else {
+        const defaultState = getDefaultGardenState(detectedLang);
+        setGardenState(defaultState);
+      }
+    } catch (error) {
+      console.error('App initialization error:', error);
+      const defaultState = getDefaultGardenState('en');
+      setGardenState(defaultState);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOnboardingComplete = async (
+    character: Character,
+    language: Language,
+  ) => {
+    const newState: GardenState = {
+      ...gardenState!,
+      character,
+      language,
+      isOnboardingComplete: true,
+    };
+
+    changeLanguage(language);
+    setGardenState(newState);
+    await saveGardenState(newState);
+  };
+
+  const handleGardenStateUpdate = async (newState: GardenState) => {
+    setGardenState(newState);
+    await saveGardenState(newState);
+  };
+
+  const handleResetToOnboarding = async () => {
+    const detectedLang = await detectLanguage();
+    const defaultState = getDefaultGardenState(detectedLang);
+    setGardenState(defaultState);
+    await saveGardenState(defaultState);
+  };
+
+  const handleLoadingComplete = () => {
+    console.log('✅ Loading complete - setting showLoadingScreen to false');
+    setShowLoadingScreen(false);
+  };
+
+  // 1. Loading Screen
+  if (showLoadingScreen) {
+    console.log('⏳ Showing Loading Screen');
+    return (
+      <ErrorBoundary>
+        <LoadingScreen onLoadingComplete={handleLoadingComplete} />
+      </ErrorBoundary>
+    );
+  }
+
+  // 2. After loading, ALWAYS show SignUp screen (for testing)
+  console.log('✅ After loading screen:', { isLoading, hasGardenState: !!gardenState });
+  console.log('📱 Showing SignUp Screen NOW!');
+  
+  // Don't wait for initialization - show SignUp immediately
+  return (
+    <ErrorBoundary>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="SignUp">
+            {props => (
+              <SignUpScreen
+                {...props}
+                onComplete={() => {
+                  console.log('SignUp complete');
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Welcome">
+            {props => (
+              <WelcomeScreen
+                {...props}
+                userName="Ahmet"
+                onContinue={() => {
+                  if (props.navigation) {
+                    props.navigation.navigate('Onboarding');
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Onboarding">
+            {props => (
+              <OnboardingScreen
+                {...props}
+                onComplete={handleOnboardingComplete}
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
+  );
+
+  // 4. Show Garden if completed onboarding (should not reach here in test mode)
+  // This code path is for users who already completed onboarding
+  return (
+    <ErrorBoundary>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Garden">
+            {props => (
+              <GardenScreen
+                {...props}
+                initialGardenState={gardenState!}
+                onStateUpdate={handleGardenStateUpdate}
+                onResetToOnboarding={handleResetToOnboarding}
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
+  );
+};
+
+export default App;

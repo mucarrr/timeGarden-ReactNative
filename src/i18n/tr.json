@@ -1,0 +1,25 @@
+{
+  "appName": "Vakit Bahçesi",
+  "chooseCharacter": "Karakterini Seç",
+  "chooseCharacterSubtitle": "Bahçeni kim büyütecek?",
+  "boy": "Ali",
+  "girl": "Ayşe",
+  "continue": "Devam Et",
+  "characterChangeInfo": "Karakterini daha sonra ayarlar menüsünden değiştirebilirsin.",
+  "garden": "Bahçe",
+  "prayerTimes": {
+    "fajr": "Sabah",
+    "dhuhr": "Öğle",
+    "asr": "İkindi",
+    "maghrib": "Akşam",
+    "isha": "Yatsı"
+  },
+  "states": {
+    "seed": "Tohum",
+    "sprout": "Filiz",
+    "flower": "Çiçek"
+  },
+  "completed": "Tamamlandı",
+  "tapToComplete": "Tamamlamak için dokun"
+}
+
