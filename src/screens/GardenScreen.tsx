@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,15 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import {
   PrayerTime,
   GardenState,
   SeedState,
 } from '../types';
 import {
-  completePrayer,
-  isPrayerCompletedToday,
   shouldCreateFlower,
+  getTodayDate,
 } from '../utils/prayerTracker';
 import { saveGardenState, loadGardenState } from '../utils/storage';
 
@@ -40,7 +40,32 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   onResetToOnboarding,
 }) => {
   const [gardenState, setGardenState] = useState<GardenState>(initialGardenState);
+  const [draggingSeed, setDraggingSeed] = useState<{ prayerTime: PrayerTime; x: number; y: number; startX: number; startY: number } | null>(null);
   const { t } = useTranslation();
+  const gardenPlotsRef = useRef<View>(null);
+  const seedButtonRefs = useRef<{ [key: string]: any }>({});
+
+  // Vakit isimlerini Türkçe olarak döndür
+  const getPrayerName = (prayerTime: PrayerTime): string => {
+    const prayerNames: Record<PrayerTime, string> = {
+      fajr: 'Sabah',
+      dhuhr: 'Öğle',
+      asr: 'İkindi',
+      maghrib: 'Akşam',
+      isha: 'Yatsı',
+    };
+    return prayerNames[prayerTime];
+  };
+
+  // Bahçedeki duruma göre tohum/filiz ikonunu döndür
+  const getSeedIcon = (prayerTime: PrayerTime): string => {
+    const parcelState = getParcelState(prayerTime);
+    // currentProgress: 0 = boş, 1 = tohum, 2 = filiz
+    if (parcelState.currentProgress === 2) {
+      return 'eco'; // Filiz
+    }
+    return 'grain'; // Tohum (0 veya 1)
+  };
 
   useEffect(() => {
     loadState();
@@ -105,23 +130,42 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   // Get parcel state (empty or has seed/sprout/flower)
   const getParcelState = (prayerTime: PrayerTime) => {
     const progress = gardenState.prayers[prayerTime];
+    const totalCount = progress.count;
+    const currentProgress = totalCount % 3; // 0, 1, veya 2 (tohum alanındaki ilerleme)
+    const flowerCount = Math.floor(totalCount / 3); // Biriken çiçek sayısı
+    
     return {
-      state: progress.state,
-      count: progress.count,
-      isEmpty: progress.count === 0,
+      currentProgress, // 0: boş, 1: tohum, 2: filiz
+      flowerCount, // Biriken çiçek sayısı
+      totalCount,
     };
   };
 
   const handlePrayerComplete = async (prayerTime: PrayerTime) => {
     const currentProgress = gardenState.prayers[prayerTime];
 
-    if (isPrayerCompletedToday(currentProgress)) {
-      Alert.alert(t('completed'), 'Bu vakit bugün zaten tamamlandı!');
-      return;
+    // Development: Her tıklamada count'u artır (bugün kontrolü yok)
+    const oldProgress = { ...currentProgress };
+    
+    // Count'u artır
+    const newCount = currentProgress.count + 1;
+    const currentProgressValue = newCount % 3; // 0, 1, veya 2
+    
+    // State'i hesapla (sadece görüntüleme için)
+    let newState: SeedState;
+    if (currentProgressValue === 0) {
+      newState = 'seed'; // Çiçek oldu, sıfırlandı
+    } else if (currentProgressValue === 1) {
+      newState = 'seed';
+    } else {
+      newState = 'sprout';
     }
 
-    const oldProgress = { ...currentProgress };
-    const newProgress = completePrayer(currentProgress);
+    const newProgress = {
+      count: newCount,
+      lastCompletedDate: getTodayDate(),
+      state: newState,
+    };
 
     const updatedPrayers = {
       ...gardenState.prayers,
@@ -137,10 +181,88 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     await saveGardenState(newGardenState);
     onStateUpdate(newGardenState);
 
-    // Check if flower was created
-    if (shouldCreateFlower(oldProgress, newProgress)) {
+    // Check if flower was created (3. tıklamada)
+    const oldFlowerCount = Math.floor(oldProgress.count / 3);
+    const newFlowerCount = Math.floor(newCount / 3);
+    if (newFlowerCount > oldFlowerCount) {
       Alert.alert('🎉', 'Çiçek açtı! Bahçende yeni bir çiçek var!');
     }
+  };
+
+  // Check if drop position is over a parcel
+  const checkDropOnParcel = (x: number, y: number, draggedPrayerTime: PrayerTime) => {
+    // Get garden plots position
+    if (!gardenPlotsRef.current) return;
+    
+    gardenPlotsRef.current.measure((fx: number, fy: number, width: number, height: number, px: number, py: number) => {
+      // Check if drop is within garden plots bounds
+      if (x >= px && x <= px + width && y >= py && y <= py + height) {
+        // Calculate which parcel (0-4) based on y position
+        const relativeY = y - py;
+        const parcelHeight = height / 5;
+        const parcelIndex = Math.floor(relativeY / parcelHeight);
+        
+        if (parcelIndex >= 0 && parcelIndex < prayerTimes.length) {
+          const targetPrayerTime = prayerTimes[parcelIndex];
+          
+          // Check if dragged seed matches the target parcel's prayer time
+          if (draggedPrayerTime === targetPrayerTime) {
+            // Correct parcel - add seed
+            handlePrayerComplete(targetPrayerTime);
+          } else {
+            // Wrong parcel - show warning
+            Alert.alert(
+              '⚠️ Yanlış Parsel',
+              `${getPrayerName(draggedPrayerTime)} tohumu ${getPrayerName(targetPrayerTime)} parseline atılamaz!`,
+              [{ text: 'Tamam', style: 'default' }]
+            );
+          }
+        }
+      }
+    });
+  };
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onDragStart = (prayerTime: PrayerTime) => {
+    // Get button position
+    const buttonRef = seedButtonRefs.current[prayerTime];
+    if (buttonRef && buttonRef.measure) {
+      buttonRef.measure((fx: number, fy: number, width: number, height: number, px: number, py: number) => {
+        setDraggingSeed({
+          prayerTime,
+          startX: px + width / 2,
+          startY: py + height / 2,
+          x: px + width / 2,
+          y: py + height / 2,
+        });
+        setIsDragging(true);
+      });
+    }
+  };
+
+  const onDragUpdate = (prayerTime: PrayerTime, translationX: number, translationY: number) => {
+    // Only start dragging if moved more than 10 pixels
+    const distance = Math.sqrt(translationX * translationX + translationY * translationY);
+    if (distance > 10 && draggingSeed && draggingSeed.prayerTime === prayerTime) {
+      setDraggingSeed({
+        ...draggingSeed,
+        x: draggingSeed.startX + translationX,
+        y: draggingSeed.startY + translationY,
+      });
+    } else if (distance <= 10 && draggingSeed) {
+      // Reset if not moved enough
+      setDraggingSeed(null);
+      setIsDragging(false);
+    }
+  };
+
+  const onDragEnd = (prayerTime: PrayerTime) => {
+    if (draggingSeed && draggingSeed.prayerTime === prayerTime) {
+      checkDropOnParcel(draggingSeed.x, draggingSeed.y, prayerTime);
+    }
+    setDraggingSeed(null);
+    setIsDragging(false);
   };
 
   const prayerTimes: PrayerTime[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
@@ -148,7 +270,8 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const userName = 'Ahmet'; // TODO: Get from storage or props
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
       {/* Background gradient effects */}
       <View style={styles.backgroundGradient} />
       <View style={styles.backgroundCircle1} />
@@ -189,82 +312,154 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
         </View>
 
         {/* Garden Plots */}
-        <View style={styles.gardenPlots}>
+        <View ref={gardenPlotsRef} style={styles.gardenPlots}>
           {prayerTimes.map((prayerTime, index) => {
             const parcelState = getParcelState(prayerTime);
             const iconName = getPrayerIcon(prayerTime);
+            const color = getPrayerColor(prayerTime);
+            
+            const isEmpty = parcelState.currentProgress === 0 && parcelState.flowerCount === 0;
             
             return (
-              <TouchableOpacity
-                key={prayerTime}
-                style={styles.parcel}
-                activeOpacity={0.7}
-                onPress={() => handlePrayerComplete(prayerTime)}>
-                {parcelState.isEmpty ? (
-                  <View style={styles.emptyParcelContent}>
-                    <Icon name={iconName} size={24} color="rgba(255, 255, 255, 0.4)" />
-                    <Text style={styles.emptyParcelText}>
-                      {index + 1}. Parsel (Boş)
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.filledParcelContent}>
-                    <Icon 
-                      name={parcelState.state === 'flower' ? 'local-florist' : parcelState.state === 'sprout' ? 'eco' : 'grain'} 
-                      size={32} 
-                      color={getPrayerColor(prayerTime)} 
-                    />
-                    <Text style={styles.filledParcelText}>
-                      {t(`prayerTimes.${prayerTime}`)}
-                    </Text>
-                    <Text style={styles.filledParcelCount}>
-                      {parcelState.count}/3
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              <View key={prayerTime} style={[styles.parcel, isEmpty && styles.parcelEmpty]}>
+                {/* Sol taraf: Tohum atma alanı */}
+                <TouchableOpacity
+                  style={styles.parcelLeft}
+                  activeOpacity={0.7}
+                  onPress={() => handlePrayerComplete(prayerTime)}>
+                  {parcelState.currentProgress === 0 ? (
+                    <View style={styles.emptyParcelContent}>
+                      <Icon name={iconName} size={20} color="rgba(255, 255, 255, 0.5)" />
+                      <Text style={styles.emptyParcelText}>
+                        {index + 1}. Parsel
+                      </Text>
+                    </View>
+                  ) : parcelState.currentProgress === 1 ? (
+                    <View style={styles.seedParcelContent}>
+                      <Icon name="grain" size={24} color={color} />
+                      <Text style={styles.seedParcelText}>Tohum</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.sproutParcelContent}>
+                      <Icon name="eco" size={24} color={color} />
+                      <Text style={styles.sproutParcelText}>Filiz</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                
+                {/* Sağ taraf: Biriken çiçekler */}
+                <View style={styles.parcelRight}>
+                  {parcelState.flowerCount > 0 ? (
+                    <View style={styles.flowersContainer}>
+                      {Array.from({ length: parcelState.flowerCount }).map((_, i) => (
+                        <Icon
+                          key={i}
+                          name="local-florist"
+                          size={28}
+                          color={color}
+                          style={styles.flowerIcon}
+                        />
+                      ))}
+                      {parcelState.flowerCount > 3 && (
+                        <Text style={styles.flowerCountText}>
+                          +{parcelState.flowerCount - 3}
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.noFlowersContainer}>
+                      <Text style={styles.noFlowersText}>Çiçek Bahçem</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
             );
           })}
         </View>
       </View>
 
-      {/* Bottom Section: Vakit Tohumları */}
+      {/* Bottom Section: Bugünün Hasadı */}
       <View style={styles.bottomSection}>
         <View style={styles.bottomSectionHandle} />
         <View style={styles.bottomSectionContent}>
-          <Text style={styles.bottomSectionTitle}>VAKİT TOHUMLARI</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.prayerSeedsContainer}>
+          <Text style={styles.bottomSectionTitle}>BUGÜNÜN HASADI</Text>
+          <View style={styles.prayerSeedsContainer}>
             {prayerTimes.map(prayerTime => {
-              const progress = gardenState.prayers[prayerTime];
-              const isCompleted = isPrayerCompletedToday(progress);
               const iconName = getPrayerIcon(prayerTime);
               const color = getPrayerColor(prayerTime);
+              const isThisDragging = draggingSeed?.prayerTime === prayerTime;
+              const seedIcon = getSeedIcon(prayerTime);
               
               return (
-                <TouchableOpacity
+                <PanGestureHandler
                   key={prayerTime}
-                  style={styles.prayerSeedButton}
-                  activeOpacity={0.7}
-                  onPress={() => handlePrayerComplete(prayerTime)}>
-                  <View style={[styles.prayerSeedIconContainer, { borderColor: isCompleted ? color : '#E5E7EB' }]}>
-                    <Icon name={iconName} size={28} color={color} />
-                  </View>
-                  <View style={styles.prayerSeedTextContainer}>
-                    <Text style={styles.prayerSeedName}>
-                      {t(`prayerTimes.${prayerTime}`)}
-                    </Text>
-                    <Icon name="grain" size={20} color={color} />
-                  </View>
-                </TouchableOpacity>
+                  minPointers={1}
+                  maxPointers={1}
+                  avgTouches={true}
+                  onHandlerStateChange={(event) => {
+                    const { state, translationX, translationY } = event.nativeEvent;
+                    if (state === State.BEGAN) {
+                      // Don't set dragging immediately, wait for movement
+                    } else if (state === State.ACTIVE) {
+                      onDragUpdate(prayerTime, translationX, translationY);
+                    } else if (state === State.END || state === State.CANCELLED) {
+                      onDragEnd(prayerTime);
+                    }
+                  }}
+                  onGestureEvent={(event) => {
+                    const { translationX, translationY } = event.nativeEvent;
+                    const distance = Math.sqrt(translationX * translationX + translationY * translationY);
+                    if (distance > 10) {
+                      // Only start dragging if moved enough
+                      if (!draggingSeed) {
+                        onDragStart(prayerTime);
+                      } else if (draggingSeed.prayerTime === prayerTime) {
+                        onDragUpdate(prayerTime, translationX, translationY);
+                      }
+                    }
+                  }}>
+                  <Animated.View 
+                    ref={(ref) => { seedButtonRefs.current[prayerTime] = ref; }}
+                    style={[styles.prayerSeedButton, isThisDragging && styles.prayerSeedButtonDragging]}>
+                    <View style={styles.prayerSeedButtonInner}>
+                      <View style={[styles.prayerSeedIconContainer, { borderColor: '#E5E7EB' }]}>
+                        <Icon name={iconName} size={28} color={color} />
+                      </View>
+                      <View style={styles.prayerSeedTextContainer}>
+                        <Text style={styles.prayerSeedName}>
+                          {getPrayerName(prayerTime)}
+                        </Text>
+                        <Icon name={seedIcon} size={20} color={color} />
+                      </View>
+                    </View>
+                  </Animated.View>
+                </PanGestureHandler>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
       </View>
-    </SafeAreaView>
+
+      {/* Dragging Seed Overlay - Sadece ikon karesi */}
+      {draggingSeed && (
+        <View
+          style={[
+            styles.draggingSeedIconOnly,
+            {
+              left: draggingSeed.x - 32,
+              top: draggingSeed.y - 32,
+            },
+          ]}
+          pointerEvents="none">
+          <Icon
+            name={getPrayerIcon(draggingSeed.prayerTime)}
+            size={28}
+            color={getPrayerColor(draggingSeed.prayerTime)}
+          />
+        </View>
+      )}
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 };
 
@@ -396,6 +591,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 16,
+    paddingBottom: 16,
     zIndex: 10,
   },
   banner: {
@@ -424,10 +620,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     maxHeight: 600,
-    backgroundColor: '#81C784',
+    backgroundColor: '#1B5E20', // Canlı ve koyu yeşil
     borderRadius: 40,
     borderWidth: 8,
-    borderColor: '#A5D6A7',
+    borderColor: '#2E7D32',
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
@@ -437,45 +633,93 @@ const styles = StyleSheet.create({
   },
   parcel: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 24,
+    flexDirection: 'row',
+    backgroundColor: '#5D4037', // Canlı ve koyu kahverengi
+    borderRadius: 20,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     marginVertical: 3,
+    overflow: 'hidden',
+  },
+  parcelEmpty: {
+    backgroundColor: '#8D6E63', // Soft kahverengi (boş parseller için)
+  },
+  parcelLeft: {
+    width: '35%',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 12,
+    borderRightWidth: 2,
+    borderRightColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  parcelRight: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   emptyParcelContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyParcelText: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  filledParcelContent: {
     alignItems: 'center',
     gap: 4,
   },
-  filledParcelText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  filledParcelCount: {
-    color: 'rgba(255, 255, 255, 0.8)',
+  emptyParcelText: {
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 12,
     fontWeight: '500',
+  },
+  seedParcelContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  seedParcelText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sproutParcelContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  sproutParcelText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  flowersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  flowerIcon: {
+    margin: 2,
+  },
+  flowerCountText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  noFlowersContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noFlowersText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   bottomSection: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    paddingTop: 8,
-    paddingBottom: 32,
+    paddingTop: 12,
+    paddingBottom: 16,
+    marginTop: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.05,
@@ -489,7 +733,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     borderRadius: 3,
     alignSelf: 'center',
-    marginTop: 12,
+    marginTop: 8,
   },
   bottomSectionContent: {
     paddingHorizontal: 20,
@@ -506,14 +750,39 @@ const styles = StyleSheet.create({
   },
   prayerSeedsContainer: {
     flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 16,
+    justifyContent: 'space-between',
+    paddingBottom: 8,
     paddingHorizontal: 4,
   },
   prayerSeedButton: {
-    width: width * 0.18,
+    flex: 1,
     alignItems: 'center',
     gap: 8,
+    marginHorizontal: 2,
+  },
+  prayerSeedButtonInner: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  prayerSeedButtonDragging: {
+    opacity: 0.5,
+  },
+  draggingSeedIconOnly: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    zIndex: 1000,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   prayerSeedIconContainer: {
     width: 64,
@@ -531,7 +800,8 @@ const styles = StyleSheet.create({
   },
   prayerSeedTextContainer: {
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
+    marginTop: 4,
   },
   prayerSeedName: {
     fontSize: 10,
