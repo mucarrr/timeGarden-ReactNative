@@ -9,10 +9,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Animated,
+  Image,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
+import BadgeModal from '../components/BadgeModal';
 import {
   PrayerTime,
   GardenState,
@@ -44,6 +46,26 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const { t } = useTranslation();
   const gardenPlotsRef = useRef<View>(null);
   const seedButtonRefs = useRef<{ [key: string]: any }>({});
+  
+  // Animation refs for harvest buttons (scale and opacity)
+  const harvestButtonAnims = useRef<{ [key: string]: Animated.Value }>({});
+  const harvestButtonOpacityAnims = useRef<{ [key: string]: Animated.Value }>({});
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [badgeType, setBadgeType] = useState<string>('first_harvest');
+  const confettiAnims = useRef<Animated.Value[]>([]);
+  const [flyingFlowers, setFlyingFlowers] = useState<Array<{
+    id: string;
+    prayerTime: PrayerTime;
+    startX?: number;
+    startY?: number;
+    anims: {
+      translateY: Animated.Value;
+      translateX: Animated.Value;
+      opacity: Animated.Value;
+      scale: Animated.Value;
+    };
+  }>>([]);
 
   // Vakit isimlerini Türkçe olarak döndür
   const getPrayerName = (prayerTime: PrayerTime): string => {
@@ -70,6 +92,53 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   useEffect(() => {
     loadState();
   }, []);
+
+  // Initialize harvest button animations
+  useEffect(() => {
+    const pulseAnimations: Animated.CompositeAnimation[] = [];
+    
+    prayerTimes.forEach(prayerTime => {
+      const parcelState = getParcelState(prayerTime);
+      
+      // Only animate if flowerCount is 3, 5, or 7
+      if (parcelState.flowerCount === 3 || parcelState.flowerCount === 5 || parcelState.flowerCount === 7) {
+        if (!harvestButtonAnims.current[prayerTime]) {
+          harvestButtonAnims.current[prayerTime] = new Animated.Value(1);
+        }
+        
+        const scaleAnim = harvestButtonAnims.current[prayerTime];
+        
+        if (scaleAnim) {
+          // Scale pulse animation (büyüme-küçülme)
+          const pulseAnim = Animated.loop(
+            Animated.sequence([
+              Animated.timing(scaleAnim, {
+                toValue: 1.15,
+                duration: 800,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+              }),
+            ])
+          );
+          pulseAnimations.push(pulseAnim);
+          pulseAnim.start();
+        }
+      } else {
+        // Reset animation if flowerCount is not 3, 5, or 7
+        if (harvestButtonAnims.current[prayerTime]) {
+          harvestButtonAnims.current[prayerTime].setValue(1);
+        }
+      }
+    });
+
+    return () => {
+      pulseAnimations.forEach(anim => anim.stop());
+    };
+  }, [gardenState]);
 
   const loadState = async () => {
     try {
@@ -141,6 +210,14 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     };
   };
 
+  // Hasat eşiğini hesapla: seviye 1-2 için 3, seviye 3-4 için 5, seviye 5+ için 7
+  const getHarvestThreshold = (): number => {
+    const level = calculateLevel();
+    if (level <= 2) return 3;
+    if (level <= 4) return 5;
+    return 7;
+  };
+
   const handlePrayerComplete = async (prayerTime: PrayerTime) => {
     const currentProgress = gardenState.prayers[prayerTime];
 
@@ -185,7 +262,13 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     const oldFlowerCount = Math.floor(oldProgress.count / 3);
     const newFlowerCount = Math.floor(newCount / 3);
     if (newFlowerCount > oldFlowerCount) {
-      Alert.alert('🎉', 'Çiçek açtı! Bahçende yeni bir çiçek var!');
+      // Check if harvest threshold is reached
+      const harvestThreshold = getHarvestThreshold();
+      if (newFlowerCount >= harvestThreshold) {
+        Alert.alert('🌾 Şimdi Hasat Zamanı!', `${harvestThreshold} çiçek biriktirdin! Hasat edebilirsin.`);
+      } else {
+        Alert.alert('🎉', 'Çiçek açtı! Bahçende yeni bir çiçek var!');
+      }
     }
   };
 
@@ -265,9 +348,142 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     setIsDragging(false);
   };
 
+  // Handle harvest: Convert flowers to badge
+  const handleHarvest = async (prayerTime: PrayerTime) => {
+    const parcelState = getParcelState(prayerTime);
+    const harvestThreshold = getHarvestThreshold();
+    
+    if (parcelState.flowerCount < harvestThreshold) {
+      return; // Should not happen, but safety check
+    }
+
+    // Get parcel position for animation start
+    const color = getPrayerColor(prayerTime);
+    const flowerCount = harvestThreshold;
+    
+    // Find parcel index
+    const parcelIndex = prayerTimes.indexOf(prayerTime);
+    
+    // Calculate starting position (center of parcel right section)
+    // Assuming parcel is in gardenPlots, we'll use approximate positions
+    const parcelHeight = 600 / 5; // gardenPlots maxHeight / 5 parcels
+    const startY = 200 + (parcelIndex * parcelHeight) + (parcelHeight / 2); // Approximate center
+    const startX = width * 0.7; // Right side of parcel
+    
+    // Create flying flowers with unique IDs and starting positions
+    const newFlyingFlowers = Array.from({ length: flowerCount }, (_, index) => ({
+      id: `${prayerTime}-${Date.now()}-${index}`,
+      prayerTime,
+      startX,
+      startY: startY + (index * 20) - 20, // Slight vertical offset
+      anims: {
+        translateY: new Animated.Value(0),
+        translateX: new Animated.Value(0),
+        opacity: new Animated.Value(1),
+        scale: new Animated.Value(1),
+      },
+    }));
+
+    // Add flying flowers to state
+    setFlyingFlowers(prev => [...prev, ...newFlyingFlowers]);
+
+    // Animate flowers flying to top (towards badge area)
+    const animations = newFlyingFlowers.map((flower, index) => {
+      const angle = (index / flowerCount) * Math.PI * 1.5; // Spread out
+      const distance = 200;
+      const targetX = Math.cos(angle) * distance;
+      const targetY = -startY - 100; // Fly upward to top
+
+      return Animated.parallel([
+        Animated.timing(flower.anims.translateY, {
+          toValue: targetY,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(flower.anims.translateX, {
+          toValue: targetX,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.delay(600),
+          Animated.timing(flower.anims.opacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(flower.anims.scale, {
+          toValue: 0.3,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ]);
+    });
+
+    // Start all animations
+    Animated.parallel(animations).start(() => {
+      // Remove flying flowers after animation completes
+      setFlyingFlowers(prev => prev.filter(f => !newFlyingFlowers.find(nf => nf.id === f.id)));
+    });
+
+    // Update garden state: remove harvested flowers
+    const currentProgress = gardenState.prayers[prayerTime];
+    const newCount = currentProgress.count - (flowerCount * 3); // Remove harvested flowers (each flower = 3 count)
+    
+    const newProgress = {
+      ...currentProgress,
+      count: Math.max(0, newCount),
+    };
+
+    const updatedPrayers = {
+      ...gardenState.prayers,
+      [prayerTime]: newProgress,
+    };
+
+    const newGardenState: GardenState = {
+      ...gardenState,
+      prayers: updatedPrayers,
+    };
+
+    setGardenState(newGardenState);
+    await saveGardenState(newGardenState);
+    onStateUpdate(newGardenState);
+
+    // Show confetti animation
+    setShowConfetti(true);
+    
+    // Create simple confetti animation
+    confettiAnims.current = Array.from({ length: 20 }, () => new Animated.Value(0));
+    const confettiAnimations = confettiAnims.current.map((anim, i) => {
+      return Animated.timing(anim, {
+        toValue: 1,
+        duration: 2000,
+        delay: i * 50,
+        useNativeDriver: true,
+      });
+    });
+    Animated.parallel(confettiAnimations).start();
+
+    // Open BadgeModal after confetti animation
+    setTimeout(() => {
+      setShowConfetti(false);
+      confettiAnims.current.forEach(anim => anim.setValue(0));
+      setBadgeType('first_harvest');
+      setBadgeModalVisible(true);
+    }, 2000);
+  };
+
   const prayerTimes: PrayerTime[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
   const totalFlowers = calculateTotalFlowers();
   const userName = 'Ahmet'; // TODO: Get from storage or props
+
+  // Seviye hesaplama: Her 10 çiçek = 1 seviye
+  const calculateLevel = (): number => {
+    return Math.floor(totalFlowers / 10) + 1;
+  };
+
+  const userLevel = calculateLevel();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -279,15 +495,28 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
 
       {/* Top Section */}
       <View style={styles.topSection}>
-        {/* Greeting Button */}
-        <TouchableOpacity style={styles.greetingButton} activeOpacity={0.8}>
-          <View style={styles.greetingIconContainer}>
-            <Icon name="face" size={20} color="#F97316" />
+        {/* Level Badge with Character Image */}
+        <View style={styles.levelBadgeContainer}>
+          <View style={styles.levelImageContainer}>
+            <Image
+              source={
+                gardenState.character === 'boy'
+                  ? require('../../assets/characters/boy.png')
+                  : require('../../assets/characters/girl-watering-flower.png')
+              }
+              style={styles.levelImage}
+              resizeMode="contain"
+            />
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelText}>Lv.{userLevel}</Text>
+            </View>
           </View>
-          <View style={styles.greetingTextContainer}>
-            <Text style={styles.greetingLabel}>Merhaba,</Text>
-            <Text style={styles.greetingName}>{userName}</Text>
-          </View>
+        </View>
+
+        {/* Statistics Button */}
+        <TouchableOpacity style={styles.statisticsButton} activeOpacity={0.8}>
+          <Icon name="bar-chart" size={20} color="#4CAF50" />
+          <Text style={styles.statisticsText}>İstatistiklerim</Text>
         </TouchableOpacity>
 
         {/* Flower Count Button */}
@@ -329,20 +558,15 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
                   onPress={() => handlePrayerComplete(prayerTime)}>
                   {parcelState.currentProgress === 0 ? (
                     <View style={styles.emptyParcelContent}>
-                      <Icon name={iconName} size={20} color="rgba(255, 255, 255, 0.5)" />
-                      <Text style={styles.emptyParcelText}>
-                        {index + 1}. Parsel
-                      </Text>
+                      <Icon name={iconName} size={40} color="rgba(255, 255, 255, 0.5)" />
                     </View>
                   ) : parcelState.currentProgress === 1 ? (
                     <View style={styles.seedParcelContent}>
-                      <Icon name="grain" size={24} color={color} />
-                      <Text style={styles.seedParcelText}>Tohum</Text>
+                      <Icon name="grain" size={40} color={color} />
                     </View>
                   ) : (
                     <View style={styles.sproutParcelContent}>
-                      <Icon name="eco" size={24} color={color} />
-                      <Text style={styles.sproutParcelText}>Filiz</Text>
+                      <Icon name="eco" size={40} color={color} />
                     </View>
                   )}
                 </TouchableOpacity>
@@ -351,15 +575,29 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
                 <View style={styles.parcelRight}>
                   {parcelState.flowerCount > 0 ? (
                     <View style={styles.flowersContainer}>
-                      {Array.from({ length: parcelState.flowerCount }).map((_, i) => (
-                        <Icon
-                          key={i}
-                          name="local-florist"
-                          size={28}
-                          color={color}
-                          style={styles.flowerIcon}
-                        />
-                      ))}
+                      {Array.from({ length: Math.min(parcelState.flowerCount, 3) }).map((_, i) => {
+                        // Farklı boyutlar
+                        const size = 32 + (i % 3) * 4; // 32, 36, 40
+                        // Hafif rotasyon
+                        const rotation = (i % 7) * 5 - 15; // -15° ile +15° arası
+                        
+                        return (
+                          <View
+                            key={i}
+                            style={[
+                              styles.flowerIconNatural,
+                              {
+                                transform: [{ rotate: `${rotation}deg` }],
+                              },
+                            ]}>
+                            <Icon
+                              name="local-florist"
+                              size={size}
+                              color={color}
+                            />
+                          </View>
+                        );
+                      })}
                       {parcelState.flowerCount > 3 && (
                         <Text style={styles.flowerCountText}>
                           +{parcelState.flowerCount - 3}
@@ -368,8 +606,37 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
                     </View>
                   ) : (
                     <View style={styles.noFlowersContainer}>
-                      <Text style={styles.noFlowersText}>Çiçek Bahçem</Text>
                     </View>
+                  )}
+                  
+                  {/* Hasat Butonu - 3, 5 veya 7 çiçek olduğunda görünür */}
+                  {(parcelState.flowerCount === 3 || parcelState.flowerCount === 5 || parcelState.flowerCount === 7) && (
+                    <Animated.View
+                      style={[
+                        styles.harvestButtonContainer,
+                        {
+                          transform: [
+                            {
+                              scale: harvestButtonAnims.current[prayerTime] || new Animated.Value(1),
+                            },
+                          ],
+                        },
+                      ]}>
+                      <TouchableOpacity
+                        style={styles.harvestButton}
+                        onPress={() => handleHarvest(prayerTime)}
+                        activeOpacity={0.8}>
+                        <View style={styles.harvestButtonGlowRing} />
+                        <View style={styles.harvestButtonOuter}>
+                          <View style={styles.harvestButtonInner}>
+                            <Icon name="content-cut" size={28} color="#4A4A4A" />
+                          </View>
+                          <View style={styles.harvestButtonShine} />
+                          <View style={styles.harvestButtonSparkle1} />
+                          <View style={styles.harvestButtonSparkle2} />
+                        </View>
+                      </TouchableOpacity>
+                    </Animated.View>
                   )}
                 </View>
               </View>
@@ -377,6 +644,34 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
           })}
         </View>
       </View>
+
+      {/* Flying Flowers Overlay */}
+      {flyingFlowers.length > 0 && (
+        <View style={styles.flyingFlowersOverlay} pointerEvents="none">
+          {flyingFlowers.map(flower => {
+            const color = getPrayerColor(flower.prayerTime);
+            return (
+              <Animated.View
+                key={flower.id}
+                style={[
+                  styles.flyingFlower,
+                  {
+                    left: flower.startX || width * 0.7,
+                    top: flower.startY || height * 0.5,
+                    transform: [
+                      { translateX: flower.anims.translateX },
+                      { translateY: flower.anims.translateY },
+                      { scale: flower.anims.scale },
+                    ],
+                    opacity: flower.anims.opacity,
+                  },
+                ]}>
+                <Icon name="local-florist" size={40} color={color} />
+              </Animated.View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Bottom Section: Bugünün Hasadı */}
       <View style={styles.bottomSection}>
@@ -458,6 +753,66 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
           />
         </View>
       )}
+
+      {/* Confetti Animation */}
+      {showConfetti && (
+        <View style={styles.confettiContainer} pointerEvents="none">
+          <View style={styles.confettiFallback}>
+            {Array.from({ length: 20 }).map((_, i) => {
+              const anim = confettiAnims.current[i] || new Animated.Value(0);
+              const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#FFD700', '#FF8C00'];
+              const startX = (i * 5) % 100;
+              const rotation = i * 18;
+              
+              return (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.confettiPiece,
+                    {
+                      backgroundColor: colors[i % colors.length],
+                      left: `${startX}%`,
+                      transform: [
+                        {
+                          translateY: anim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-50, height + 50],
+                          }),
+                        },
+                        {
+                          translateX: anim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, (Math.random() - 0.5) * 200],
+                          }),
+                        },
+                        {
+                          rotate: anim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', `${rotation + 360}deg`],
+                          }),
+                        },
+                      ],
+                      opacity: anim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [1, 1, 0],
+                      }),
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* Badge Modal */}
+      <BadgeModal
+        visible={badgeModalVisible}
+        onClose={() => setBadgeModalVisible(false)}
+        badgeType={badgeType}
+        character={gardenState.character}
+        level={userLevel}
+      />
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -501,18 +856,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingTop: 48,
     paddingBottom: 8,
     zIndex: 20,
+    gap: 8,
   },
-  greetingButton: {
+  levelBadgeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelImageContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelImage: {
+    width: 60,
+    height: 60,
+  },
+  levelBadge: {
+    position: 'absolute',
+    bottom: -4,
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  levelText: {
+    fontSize: 12,
+    color: '#1F2937',
+    fontWeight: '700',
+  },
+  statisticsButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    paddingLeft: 6,
-    paddingRight: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 9999,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.4)',
@@ -522,28 +911,10 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  greetingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FED7AA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  greetingTextContainer: {
-    marginLeft: 12,
-  },
-  greetingLabel: {
+  statisticsText: {
     fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  greetingName: {
-    fontSize: 14,
     color: '#1F2937',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   flowerCountButton: {
     flexDirection: 'row',
@@ -640,7 +1011,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: 'rgba(255, 255, 255, 0.3)',
     marginVertical: 3,
-    overflow: 'hidden',
+    overflow: 'visible',
+    zIndex: 1,
   },
   parcelEmpty: {
     backgroundColor: '#8D6E63', // Soft kahverengi (boş parseller için)
@@ -659,49 +1031,161 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
+    overflow: 'visible',
+    zIndex: 50,
   },
   emptyParcelContent: {
     alignItems: 'center',
-    gap: 4,
-  },
-  emptyParcelText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-    fontWeight: '500',
+    justifyContent: 'center',
   },
   seedParcelContent: {
     alignItems: 'center',
-    gap: 4,
-  },
-  seedParcelText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   sproutParcelContent: {
     alignItems: 'center',
-    gap: 4,
-  },
-  sproutParcelText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   flowersContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
   },
-  flowerIcon: {
-    margin: 2,
+  flowerIconNatural: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   flowerCountText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     marginLeft: 4,
+  },
+  harvestButtonContainer: {
+    position: 'absolute',
+    right: -8,
+    top: '50%',
+    marginTop: -50, // Biraz daha yukarıda
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    elevation: 100,
+  },
+  harvestButton: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 36,
+  },
+  harvestButtonOuter: {
+    width: 58,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 29,
+    backgroundColor: '#C0C0C0', // Parlak gümüş dış çerçeve
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 15,
+    position: 'relative',
+    overflow: 'visible',
+    borderWidth: 3,
+    borderColor: '#E8E8E8', // Parlak kenarlık
+  },
+  harvestButtonInner: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D4D4D4', // Parlak gümüş
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#FFFFFF', // Beyaz parlak kenarlık
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  harvestButtonShine: {
+    position: 'absolute',
+    top: 6,
+    left: 10,
+    width: 24,
+    height: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 5,
+    transform: [{ rotate: '-35deg' }],
+  },
+  harvestButtonGlowRing: {
+    position: 'absolute',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  harvestButtonSparkle1: {
+    position: 'absolute',
+    top: -4,
+    right: 8,
+    width: 8,
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  harvestButtonSparkle2: {
+    position: 'absolute',
+    bottom: 2,
+    left: 6,
+    width: 6,
+    height: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 3,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  confettiContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2000,
+    pointerEvents: 'none',
+  },
+  confettiAnimation: {
+    width: '100%',
+    height: '100%',
+  },
+  confettiFallback: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  confettiPiece: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    top: -20,
   },
   noFlowersContainer: {
     alignItems: 'center',
@@ -712,6 +1196,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  flyingFlowersOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    pointerEvents: 'none',
+  },
+  flyingFlower: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bottomSection: {
     backgroundColor: '#FFFFFF',

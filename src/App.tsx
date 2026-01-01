@@ -13,6 +13,7 @@ import GoalSelectionScreen from './screens/GoalSelectionScreen';
 import StartScreen from './screens/StartScreen';
 import AbdestAlmaScreen from './screens/AbdestAlmaScreen';
 import NamazVakitleriScreen from './screens/NamazVakitleriScreen';
+import BadgeScreen from './screens/BadgeScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { GardenState, Character, Language } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -212,6 +213,9 @@ const App: React.FC = () => {
               />
             )}
           </Stack.Screen>
+          <Stack.Screen name="Badge">
+            {props => <BadgeScreen {...props} badgeType={(props.route?.params as any)?.badgeType} />}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
     </ErrorBoundary>
@@ -232,6 +236,9 @@ const App: React.FC = () => {
                 onResetToOnboarding={handleResetToOnboarding}
               />
             )}
+          </Stack.Screen>
+          <Stack.Screen name="Badge">
+            {props => <BadgeScreen {...props} badgeType={(props.route?.params as any)?.badgeType} />}
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
