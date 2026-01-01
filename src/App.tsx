@@ -6,7 +6,13 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import GardenScreen from './screens/GardenScreen';
 import LoadingScreen from './screens/LoadingScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import SignInScreen from './screens/SignInScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
+import PrayerTimesSelectionScreen from './screens/PrayerTimesSelectionScreen';
+import GoalSelectionScreen from './screens/GoalSelectionScreen';
+import StartScreen from './screens/StartScreen';
+import AbdestAlmaScreen from './screens/AbdestAlmaScreen';
+import NamazVakitleriScreen from './screens/NamazVakitleriScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { GardenState, Character, Language } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -118,6 +124,16 @@ const App: React.FC = () => {
               />
             )}
           </Stack.Screen>
+          <Stack.Screen name="SignIn">
+            {props => (
+              <SignInScreen
+                {...props}
+                onComplete={() => {
+                  console.log('SignIn complete');
+                }}
+              />
+            )}
+          </Stack.Screen>
           <Stack.Screen name="Welcome">
             {props => (
               <WelcomeScreen
@@ -135,7 +151,64 @@ const App: React.FC = () => {
             {props => (
               <OnboardingScreen
                 {...props}
-                onComplete={handleOnboardingComplete}
+                onComplete={(character: Character, language: Language) => {
+                  handleOnboardingComplete(character, language);
+                  if (props.navigation) {
+                    props.navigation.navigate('PrayerTimesSelection');
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="PrayerTimesSelection">
+            {props => (
+              <PrayerTimesSelectionScreen
+                {...props}
+                onComplete={() => {
+                  if (props.navigation) {
+                    props.navigation.navigate('GoalSelection');
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="GoalSelection">
+            {props => (
+              <GoalSelectionScreen
+                {...props}
+                onComplete={() => {
+                  if (props.navigation) {
+                    props.navigation.navigate('Start');
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Start">
+            {props => (
+              <StartScreen
+                {...props}
+                onComplete={() => {
+                  if (props.navigation) {
+                    props.navigation.navigate('Garden');
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AbdestAlma">
+            {props => <AbdestAlmaScreen {...props} />}
+          </Stack.Screen>
+          <Stack.Screen name="NamazVakitleri">
+            {props => <NamazVakitleriScreen {...props} />}
+          </Stack.Screen>
+          <Stack.Screen name="Garden">
+            {props => (
+              <GardenScreen
+                {...props}
+                initialGardenState={gardenState || getDefaultGardenState('tr')}
+                onStateUpdate={handleGardenStateUpdate}
+                onResetToOnboarding={handleResetToOnboarding}
               />
             )}
           </Stack.Screen>

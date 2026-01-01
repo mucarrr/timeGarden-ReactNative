@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   TouchableOpacity,
   Text,
+  View,
   StyleSheet,
   ViewStyle,
   TextStyle,
@@ -16,6 +17,9 @@ interface PrimaryButtonProps {
   textStyle?: TextStyle;
   showArrow?: boolean;
   disabled?: boolean;
+  iconColor?: string;
+  leftIcon?: string; // Icon name for left side icon (e.g., "yard")
+  leftIconSize?: number;
 }
 
 const PrimaryButton: React.FC<PrimaryButtonProps> = ({
@@ -25,19 +29,39 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   textStyle,
   showArrow = true,
   disabled = false,
+  iconColor,
+  leftIcon,
+  leftIconSize = 24,
 }) => {
+  const [isPressed, setIsPressed] = useState(false);
+
   return (
     <TouchableOpacity
-      style={[styles.button, disabled && styles.buttonDisabled, style]}
+      style={[
+        styles.button,
+        disabled && styles.buttonDisabled,
+        isPressed && styles.buttonPressed,
+        style,
+      ]}
       onPress={onPress}
-      activeOpacity={0.9}
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
+      activeOpacity={1}
       disabled={disabled}>
+      {leftIcon && (
+        <IconWrapper 
+          name={leftIcon} 
+          size={leftIconSize} 
+          color={iconColor || Colors.textDark}
+          emojiFallback="🌱"
+        />
+      )}
       <Text style={[styles.buttonText, textStyle]}>{title}</Text>
-      {showArrow && (
+      {showArrow && !leftIcon && (
         <IconWrapper 
           name="arrow-forward" 
           size={24} 
-          color={Colors.textDark}
+          color={iconColor || Colors.textDark}
           emojiFallback="→"
         />
       )}
@@ -51,7 +75,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  buttonPressed: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    elevation: 2,
+    transform: [{ translateY: 6 }],
   },
   buttonDisabled: {
     opacity: 0.5,

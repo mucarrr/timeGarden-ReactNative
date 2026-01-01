@@ -16,10 +16,11 @@ export const Colors = {
   textDark: '#102216',
   textSecondary: '#5c7a67',
   textLight: '#999',
+  placeholder: '#5c7a67', // Subtitle ile aynı renk (textSecondary)
   
   // Surface Colors
   surface: '#FFFFFF',
-  inputBackground: '#eefbf2',
+  inputBackground: '#FFFFFF', // Beyaz arka plan - daha belirgin ayrım
   
   // Border Colors
   borderLight: '#e2e8e4',
@@ -127,8 +128,11 @@ export const CommonStyles = {
     height: 64,
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,
-    borderBottomWidth: 8,
-    borderBottomColor: Colors.primaryDark,
+    shadowColor: Colors.primaryDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    elevation: 8,
   },
   
   buttonText: {
@@ -150,7 +154,12 @@ export const CommonStyles = {
     borderRadius: BorderRadius.full,
     height: 56,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: '#E5EDE8', // Açık yeşil border - arka plandan ayrım için
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    // elevation: 2,
   },
   
   inputContainerFocused: {

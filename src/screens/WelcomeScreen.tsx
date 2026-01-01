@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  Image,
   Animated,
   Dimensions,
 } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import IconWrapper from '../components/IconWrapper';
+import FlowerCharacter from '../components/FlowerCharacter';
 import { Colors, CommonStyles, FontSizes, FontWeights, BorderRadius, Spacing, Shadows } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
@@ -125,17 +125,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
         {/* Character Avatar - Like Loading Screen */}
         <Animated.View style={[styles.avatarContainer, floatStyle]}>
-          {/* Avatar Circle - Circular */}
-          <View style={styles.avatarCircle}>
-            <Image
-              source={{
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDp2hyjhPsFsJx_O0aJianOPjzTrPRizA3KsAvth_uADJTGSRTXMU6o84v_3WzuVq5dblPXml-0MbBNBNOu7hRz5umFgHWlFEeSgLD7eyfVeFLfCemzECfJFLh9cZQPEEK0_byRQ4YWzMJJI7Uqyi_LnpnytdiBNcc3GHri2FnYDHjr_8U07Wb0W6jzy52Ft2lq2saOnlS8l2bTHl1vdrXk0gz9WbSptRUzYpGHqUTiUAofKD1kHg0N5vgqucmNCcphRy6IX8JrQpo',
-              }}
-              style={styles.avatarImage}
-              resizeMode="contain"
-            />
-          </View>
-
+          <FlowerCharacter size={176} animated={true} />
+          
           {/* Gardener Badge - At bottom edge of circle, centered */}
           <View style={styles.badgeContainer}>
             <View style={styles.badge}>
@@ -210,6 +201,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     ...CommonStyles.title,
+    color: Colors.textDark, // Same as SignUpScreen title color
     marginBottom: Spacing.md,
   },
   userName: {
@@ -224,22 +216,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 10,
     width: '100%',
-  },
-  avatarCircle: {
-    width: 176,
-    height: 176,
-    borderRadius: BorderRadius.xl, // Perfect circle
-    backgroundColor: Colors.surface,
-    ...Shadows.logo,
-    borderWidth: 4,
-    borderColor: Colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
   },
   badgeContainer: {
     position: 'absolute',
@@ -272,7 +248,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: Spacing.xl * 2, // Same bottom spacing as other screens
     paddingTop: 24,
     zIndex: 10,
   },

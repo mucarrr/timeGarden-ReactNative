@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
+  Image,
 } from 'react-native';
 import { Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -71,11 +72,10 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             </View>
           )}
           <Animated.View style={[styles.characterWrapper, boyAnimatedStyle]}>
-            <LottieCharacter
-              character="boy"
-              animation="idle"
-              size={120}
-              loop={true}
+            <Image
+              source={require('../../assets/characters/boy.png')}
+              style={styles.boyImage}
+              resizeMode="contain"
             />
           </Animated.View>
           <Text style={styles.characterName}>{t('boy')}</Text>
@@ -95,11 +95,10 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             </View>
           )}
           <Animated.View style={[styles.characterWrapper, girlAnimatedStyle]}>
-            <LottieCharacter
-              character="girl"
-              animation="idle"
-              size={120}
-              loop={true}
+            <Image
+              source={require('../../assets/characters/girl-watering-flower.png')}
+              style={styles.girlImage}
+              resizeMode="contain"
             />
           </Animated.View>
           <Text style={styles.characterName}>{t('girl')}</Text>
@@ -155,6 +154,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
+  },
+  boyImage: {
+    width: 150,
+    height: 150,
+  },
+  girlImage: {
+    width: 150,
+    height: 150,
   },
   characterName: {
     fontSize: 18,

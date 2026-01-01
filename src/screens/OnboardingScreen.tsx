@@ -8,11 +8,13 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import CharacterSelector from '../components/CharacterSelector';
+import PrimaryButton from '../components/PrimaryButton';
+import IconWrapper from '../components/IconWrapper';
 import { Character, Language } from '../types';
 import { detectLanguage } from '../utils/languageDetector';
 import { changeLanguage } from '../i18n';
+import { Colors, CommonStyles, FontSizes, FontWeights, Spacing, BorderRadius } from '../styles/theme';
 
 interface OnboardingScreenProps {
   navigation?: any;
@@ -49,7 +51,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>{t('appName')}</Text>
       </View>
     );
@@ -66,10 +68,20 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
               navigation.goBack();
             }
           }}>
-          <Icon name="arrow-back" size={24} color="#333" />
+          <IconWrapper
+            name="arrow-back"
+            size={24}
+            color={Colors.textDark}
+            emojiFallback="←"
+          />
         </TouchableOpacity>
         <View style={styles.logoContainer}>
-          <Icon name="local-florist" size={20} color="#4CAF50" />
+          <IconWrapper
+            name="local-florist"
+            size={20}
+            color={Colors.primary}
+            emojiFallback="🌱"
+          />
           <Text style={styles.logo}>{t('appName')}</Text>
         </View>
         <TouchableOpacity style={styles.languageButton}>
@@ -97,13 +109,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
       </View>
 
       {/* Continue Button */}
-      <TouchableOpacity
-        style={styles.continueButton}
-        onPress={handleContinue}
-        activeOpacity={0.8}>
-        <Text style={styles.continueButtonText}>{t('continue')}</Text>
-        <Icon name="arrow-forward" size={20} color="#333" style={styles.continueIcon} />
-      </TouchableOpacity>
+      <View style={styles.buttonWrapper}>
+        <PrimaryButton
+          title={t('continue')}
+          onPress={handleContinue}
+        />
+      </View>
     </SafeAreaView>
   );
 };
@@ -111,27 +122,26 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: Colors.background,
   },
   loadingText: {
     marginTop: 20,
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    ...CommonStyles.title,
+    color: Colors.primary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#E8F5E9',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.surface,
   },
   backButton: {
     width: 40,
@@ -145,93 +155,74 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logo: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.semiBold,
+    color: Colors.textDark,
   },
   languageButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: Colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   languageText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: FontSizes.bodySmall,
+    fontWeight: FontWeights.semiBold,
+    color: Colors.textDark,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl * 2,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
+    ...CommonStyles.title,
+    fontSize: FontSizes.title * 1.2,
+    color: Colors.textDark, // Same as SignUpScreen title color
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    ...CommonStyles.subtitle,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: Spacing.xl * 2,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 20,
-    marginBottom: 20,
+    backgroundColor: Colors.surface,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   infoIcon: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: Spacing.md,
   },
   infoIconText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: 'bold',
+    color: Colors.surface,
+    fontSize: FontSizes.bodySmall,
+    fontWeight: FontWeights.bold,
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
-    color: '#333',
+    fontSize: FontSizes.body,
+    color: Colors.textDark,
     lineHeight: 20,
   },
-  continueButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 20,
-    marginBottom: 40,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  continueButtonText: {
-    color: '#333',
-    fontSize: 18,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  continueIcon: {
-    marginLeft: 4,
+  buttonWrapper: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl * 2,
   },
 });
 

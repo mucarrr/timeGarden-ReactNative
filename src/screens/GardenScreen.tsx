@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,30 +8,23 @@ import {
   Dimensions,
   TouchableOpacity,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import LottieView from 'lottie-react-native';
-import GardenGrid from '../components/GardenGrid';
-import PrayerButton from '../components/PrayerButton';
-import LottieCharacter from '../components/LottieCharacter';
 import {
   PrayerTime,
   GardenState,
-  Flower,
   SeedState,
 } from '../types';
 import {
   completePrayer,
   isPrayerCompletedToday,
   shouldCreateFlower,
-  getTodayDate,
 } from '../utils/prayerTracker';
 import { saveGardenState, loadGardenState } from '../utils/storage';
 
-const { width } = Dimensions.get('window');
-const FLOWER_COLORS = ['#FF6B9D', '#FFB74D', '#BA68C8', '#4FC3F7', '#81C784'];
+const { width, height } = Dimensions.get('window');
 
 interface GardenScreenProps {
   navigation?: any;
@@ -47,43 +40,76 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   onResetToOnboarding,
 }) => {
   const [gardenState, setGardenState] = useState<GardenState>(initialGardenState);
-  const [flowers, setFlowers] = useState<Flower[]>([]);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const characterAnimationRef = useRef<LottieView>(null);
-  const celebrationScale = React.useRef(new Animated.Value(1)).current;
   const { t } = useTranslation();
 
   useEffect(() => {
-    loadFlowers();
+    loadState();
   }, []);
 
-  const loadFlowers = async () => {
+  const loadState = async () => {
     try {
       const state = await loadGardenState();
       if (state) {
-        // Çiçekleri oluştur (state'den)
-        const newFlowers: Flower[] = [];
-        Object.entries(state.prayers).forEach(([prayerTime, progress]) => {
-          if (progress.state === 'flower' && progress.count >= 3) {
-            // Rastgele pozisyon (basit implementasyon)
-            const row = Math.floor(Math.random() * 6);
-            const col = Math.floor(Math.random() * 6);
-            const color = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
-
-            newFlowers.push({
-              id: `${prayerTime}-${progress.count}`,
-              prayerTime: prayerTime as PrayerTime,
-              position: { row, col },
-              color,
-              createdAt: getTodayDate(),
-            });
-          }
-        });
-        setFlowers(newFlowers);
+        setGardenState(state);
       }
     } catch (error) {
-      console.error('Error loading flowers:', error);
+      console.error('Error loading garden state:', error);
     }
+  };
+
+  // Calculate total flowers: sum of (count // 3) for each prayer time
+  const calculateTotalFlowers = (): number => {
+    let totalFlowers = 0;
+    Object.values(gardenState.prayers).forEach(progress => {
+      totalFlowers += Math.floor(progress.count / 3);
+    });
+    return totalFlowers;
+  };
+
+  // Get prayer time icon
+  const getPrayerIcon = (prayerTime: PrayerTime): string => {
+    switch (prayerTime) {
+      case 'fajr':
+        return 'wb-sunny'; // Morning sun
+      case 'dhuhr':
+        return 'wb-sunny'; // Noon sun
+      case 'asr':
+        return 'wb-cloudy'; // Afternoon with clouds
+      case 'maghrib':
+        return 'nightlight-round'; // Evening moon
+      case 'isha':
+        return 'nightlight-round'; // Night moon
+      default:
+        return 'radio-button-unchecked';
+    }
+  };
+
+  // Get prayer time color
+  const getPrayerColor = (prayerTime: PrayerTime): string => {
+    switch (prayerTime) {
+      case 'fajr':
+        return '#F59E0B'; // yellow-500
+      case 'dhuhr':
+        return '#EF4444'; // red-500
+      case 'asr':
+        return '#4CAF50'; // green-500
+      case 'maghrib':
+        return '#6366F1'; // indigo-500
+      case 'isha':
+        return '#A855F7'; // purple-500
+      default:
+        return '#9E9E9E';
+    }
+  };
+
+  // Get parcel state (empty or has seed/sprout/flower)
+  const getParcelState = (prayerTime: PrayerTime) => {
+    const progress = gardenState.prayers[prayerTime];
+    return {
+      state: progress.state,
+      count: progress.count,
+      isEmpty: progress.count === 0,
+    };
   };
 
   const handlePrayerComplete = async (prayerTime: PrayerTime) => {
@@ -111,125 +137,132 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     await saveGardenState(newGardenState);
     onStateUpdate(newGardenState);
 
-    // Çiçek açtı mı kontrol et
+    // Check if flower was created
     if (shouldCreateFlower(oldProgress, newProgress)) {
-      const row = Math.floor(Math.random() * 6);
-      const col = Math.floor(Math.random() * 6);
-      const color = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
-
-      const newFlower: Flower = {
-        id: `${prayerTime}-${Date.now()}`,
-        prayerTime,
-        position: { row, col },
-        color,
-        createdAt: getTodayDate(),
-      };
-
-      setFlowers(prev => [...prev, newFlower]);
-      
-      // Kutlama animasyonu
-      setShowCelebration(true);
-      Animated.sequence([
-        Animated.spring(celebrationScale, {
-          toValue: 1.3,
-          useNativeDriver: true,
-          tension: 50,
-          friction: 3,
-        }),
-        Animated.spring(celebrationScale, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 5,
-        }),
-      ]).start();
-      
-      // Karakter kutlama animasyonu
-      if (characterAnimationRef.current) {
-        characterAnimationRef.current.play();
-      }
-
-      // 3 saniye sonra kutlama mesajını kapat
-      setTimeout(() => {
-        setShowCelebration(false);
-      }, 3000);
-
       Alert.alert('🎉', 'Çiçek açtı! Bahçende yeni bir çiçek var!');
     }
   };
 
-  const celebrationAnimatedStyle = {
-    transform: [{ scale: celebrationScale }],
-  };
-
   const prayerTimes: PrayerTime[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-
-  const handleGoBack = () => {
-    if (navigation && navigation.canGoBack()) {
-      navigation.goBack();
-    } else if (onResetToOnboarding) {
-      // Onboarding'e dönmek için state'i sıfırla
-      onResetToOnboarding();
-    }
-  };
+  const totalFlowers = calculateTotalFlowers();
+  const userName = 'Ahmet'; // TODO: Get from storage or props
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleGoBack}>
-          <Icon name="arrow-back" size={24} color="#333" />
+      {/* Background gradient effects */}
+      <View style={styles.backgroundGradient} />
+      <View style={styles.backgroundCircle1} />
+      <View style={styles.backgroundCircle2} />
+
+      {/* Top Section */}
+      <View style={styles.topSection}>
+        {/* Greeting Button */}
+        <TouchableOpacity style={styles.greetingButton} activeOpacity={0.8}>
+          <View style={styles.greetingIconContainer}>
+            <Icon name="face" size={20} color="#F97316" />
+          </View>
+          <View style={styles.greetingTextContainer}>
+            <Text style={styles.greetingLabel}>Merhaba,</Text>
+            <Text style={styles.greetingName}>{userName}</Text>
+          </View>
         </TouchableOpacity>
-        <View style={styles.logoContainer}>
-          <Icon name="local-florist" size={20} color="#4CAF50" />
-          <Text style={styles.title}>{t('garden')}</Text>
-        </View>
-        <View style={styles.placeholder} />
+
+        {/* Flower Count Button */}
+        <TouchableOpacity style={styles.flowerCountButton} activeOpacity={0.8}>
+          <View style={styles.flowerIconContainer}>
+            <Icon name="local-florist" size={20} color="#EC4899" />
+          </View>
+          <View style={styles.flowerTextContainer}>
+            <Text style={styles.flowerLabel}>ÇİÇEK</Text>
+            <Text style={styles.flowerCount}>{totalFlowers}</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
+      {/* Main Garden Area */}
       <View style={styles.gardenContainer}>
-        <GardenGrid flowers={flowers} />
-        
-        {/* Karakter - Bahçede duruyor */}
-        <View style={styles.characterContainer}>
-          <LottieCharacter
-            ref={characterAnimationRef}
-            character={gardenState.character}
-            animation={showCelebration ? 'celebrate' : 'idle'}
-            size={100}
-            loop={!showCelebration}
-            autoPlay={true}
-          />
+        {/* Banner: 3 Tohum = 1 Çiçek */}
+        <View style={styles.banner}>
+          <Icon name="grain" size={16} color="#2E7D32" />
+          <Text style={styles.bannerText}>3 Tohum = 1 Çiçek</Text>
+          <Icon name="local-florist" size={16} color="#EC4899" />
         </View>
 
-        {/* Kutlama efekti */}
-        {showCelebration && (
-          <Animated.View
-            style={[styles.celebrationContainer, celebrationAnimatedStyle]}>
-            <Text style={styles.celebrationText}>🎉</Text>
-          </Animated.View>
-        )}
+        {/* Garden Plots */}
+        <View style={styles.gardenPlots}>
+          {prayerTimes.map((prayerTime, index) => {
+            const parcelState = getParcelState(prayerTime);
+            const iconName = getPrayerIcon(prayerTime);
+            
+            return (
+              <TouchableOpacity
+                key={prayerTime}
+                style={styles.parcel}
+                activeOpacity={0.7}
+                onPress={() => handlePrayerComplete(prayerTime)}>
+                {parcelState.isEmpty ? (
+                  <View style={styles.emptyParcelContent}>
+                    <Icon name={iconName} size={24} color="rgba(255, 255, 255, 0.4)" />
+                    <Text style={styles.emptyParcelText}>
+                      {index + 1}. Parsel (Boş)
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.filledParcelContent}>
+                    <Icon 
+                      name={parcelState.state === 'flower' ? 'local-florist' : parcelState.state === 'sprout' ? 'eco' : 'grain'} 
+                      size={32} 
+                      color={getPrayerColor(prayerTime)} 
+                    />
+                    <Text style={styles.filledParcelText}>
+                      {t(`prayerTimes.${prayerTime}`)}
+                    </Text>
+                    <Text style={styles.filledParcelCount}>
+                      {parcelState.count}/3
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
-      <View style={styles.prayerButtonsContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.prayerButtons}>
-          {prayerTimes.map(prayerTime => (
-            <PrayerButton
-              key={prayerTime}
-              prayerTime={prayerTime}
-              state={gardenState.prayers[prayerTime].state}
-              isCompletedToday={isPrayerCompletedToday(
-                gardenState.prayers[prayerTime],
-              )}
-              onPress={() => handlePrayerComplete(prayerTime)}
-            />
-          ))}
-        </ScrollView>
+      {/* Bottom Section: Vakit Tohumları */}
+      <View style={styles.bottomSection}>
+        <View style={styles.bottomSectionHandle} />
+        <View style={styles.bottomSectionContent}>
+          <Text style={styles.bottomSectionTitle}>VAKİT TOHUMLARI</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.prayerSeedsContainer}>
+            {prayerTimes.map(prayerTime => {
+              const progress = gardenState.prayers[prayerTime];
+              const isCompleted = isPrayerCompletedToday(progress);
+              const iconName = getPrayerIcon(prayerTime);
+              const color = getPrayerColor(prayerTime);
+              
+              return (
+                <TouchableOpacity
+                  key={prayerTime}
+                  style={styles.prayerSeedButton}
+                  activeOpacity={0.7}
+                  onPress={() => handlePrayerComplete(prayerTime)}>
+                  <View style={[styles.prayerSeedIconContainer, { borderColor: isCompleted ? color : '#E5E7EB' }]}>
+                    <Icon name={iconName} size={28} color={color} />
+                  </View>
+                  <View style={styles.prayerSeedTextContainer}>
+                    <Text style={styles.prayerSeedName}>
+                      {t(`prayerTimes.${prayerTime}`)}
+                    </Text>
+                    <Icon name="grain" size={20} color={color} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -238,68 +271,273 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#E0F7FA',
   },
-  header: {
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.33,
+    backgroundColor: 'rgba(129, 212, 250, 0.3)',
+    zIndex: 0,
+  },
+  backgroundCircle1: {
+    position: 'absolute',
+    top: 40,
+    right: 40,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(254, 240, 138, 0.4)',
+    zIndex: 0,
+  },
+  backgroundCircle2: {
+    position: 'absolute',
+    top: 80,
+    left: 40,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    zIndex: 0,
+  },
+  topSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#E8F5E9',
-    borderBottomWidth: 1,
-    borderBottomColor: '#4CAF50',
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 8,
+    zIndex: 20,
   },
-  backButton: {
+  greetingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingLeft: 6,
+    paddingRight: 16,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  greetingIconContainer: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FED7AA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  greetingTextContainer: {
+    marginLeft: 12,
+  },
+  greetingLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  greetingName: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '700',
+  },
+  flowerCountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingLeft: 12,
+    paddingRight: 16,
+    paddingVertical: 8,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  flowerIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FCE7F3',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  flowerTextContainer: {
+    marginLeft: 8,
+    alignItems: 'flex-end',
   },
-  title: {
+  flowerLabel: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  flowerCount: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  placeholder: {
-    width: 40,
+    color: '#1F2937',
+    fontWeight: '700',
   },
   gardenContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  prayerButtonsContainer: {
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 2,
-    borderTopColor: '#4CAF50',
-  },
-  prayerButtons: {
-    paddingHorizontal: 15,
-    gap: 15,
-  },
-  characterContainer: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     zIndex: 10,
   },
-  celebrationContainer: {
-    position: 'absolute',
-    top: '40%',
-    alignSelf: 'center',
-    zIndex: 20,
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  celebrationText: {
-    fontSize: 80,
+  bannerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  gardenPlots: {
+    width: '100%',
+    height: '100%',
+    maxHeight: 600,
+    backgroundColor: '#81C784',
+    borderRadius: 40,
+    borderWidth: 8,
+    borderColor: '#A5D6A7',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.15,
+    shadowRadius: 40,
+    elevation: 20,
+  },
+  parcel: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    marginVertical: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyParcelContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyParcelText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filledParcelContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  filledParcelText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  filledParcelCount: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  bottomSection: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    paddingTop: 8,
+    paddingBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 10,
+    zIndex: 30,
+  },
+  bottomSectionHandle: {
+    width: 48,
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  bottomSectionContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  bottomSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  prayerSeedsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 16,
+    paddingHorizontal: 4,
+  },
+  prayerSeedButton: {
+    width: width * 0.18,
+    alignItems: 'center',
+    gap: 8,
+  },
+  prayerSeedIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  prayerSeedTextContainer: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  prayerSeedName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7280',
   },
 });
 
 export default GardenScreen;
-

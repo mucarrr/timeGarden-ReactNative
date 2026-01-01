@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { Colors, CommonStyles } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -98,23 +99,22 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onLoadingComplete }) => {
 
       {/* Main Content */}
       <Animated.View style={[styles.content, fadeStyle]}>
-        {/* Logo Container */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoBox}>
+        {/* Logo and Title Container */}
+        <View style={styles.logoTitleContainer}>
+          {/* Logo Container */}
+          <View style={styles.logoContainer}>
             <Image
-              source={{
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDp2hyjhPsFsJx_O0aJianOPjzTrPRizA3KsAvth_uADJTGSRTXMU6o84v_3WzuVq5dblPXml-0MbBNBNOu7hRz5umFgHWlFEeSgLD7eyfVeFLfCemzECfJFLh9cZQPEEK0_byRQ4YWzMJJI7Uqyi_LnpnytdiBNcc3GHri2FnYDHjr_8U07Wb0W6jzy52Ft2lq2saOnlS8l2bTHl1vdrXk0gz9WbSptRUzYpGHqUTiUAofKD1kHg0N5vgqucmNCcphRy6IX8JrQpo',
-              }}
+              source={require('../../assets/characters/children.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
           </View>
-        </View>
 
-        {/* App Title */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.titleMain}>Vakit Bahçesi</Text>
-          <Text style={styles.titleSub}>Time Garden</Text>
+          {/* App Title */}
+          <View style={styles.titleContainer}>
+            <Text style={styles.titleMain}>Vakit Bahçesi</Text>
+            <Text style={styles.titleSub}>Time Garden</Text>
+          </View>
         </View>
       </Animated.View>
 
@@ -177,51 +177,35 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
     zIndex: 10,
   },
+  logoTitleContainer: {
+    alignItems: 'center',
+  },
   logoContainer: {
-    marginBottom: 32,
     position: 'relative',
-  },
-  logoBlur: {
-    // Removed - using shadow on logoBox instead
-  },
-  logoBox: {
-    width: 160,
-    height: 160,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
   logoImage: {
-    width: '100%',
-    height: '100%',
+    width: 360,
+    height: 360,
+    marginBottom: -40,
   },
   titleContainer: {
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: -40,
   },
   titleMain: {
+    ...CommonStyles.title,
     fontSize: 36,
-    fontWeight: 'bold',
-    color: '#102216',
+    color: Colors.textDark, // Same as SignUpScreen title color
     letterSpacing: -0.5,
   },
   titleSub: {
+    ...CommonStyles.subtitle,
     fontSize: 18,
-    fontWeight: '500',
-    color: '#4c9a66',
+    color: Colors.textSecondary, // Same as SignUpScreen subtitle color
   },
   loadingArea: {
     width: '100%',

@@ -11,9 +11,9 @@ import {
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import IconWrapper from '../components/IconWrapper';
 import PrimaryButton from '../components/PrimaryButton';
+import CountryPicker, { Country } from '../components/CountryPicker';
 import { Colors, CommonStyles, FontSizes, FontWeights, BorderRadius, Spacing } from '../styles/theme';
 import { Language } from '../types';
 
@@ -31,6 +31,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<Language>('tr');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [showCountryModal, setShowCountryModal] = useState(false);
   const { t } = useTranslation();
 
   const handleSignUp = () => {
@@ -114,7 +115,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                   <TextInput
                     style={styles.input}
                     placeholder="Sana nasıl seslenelim?"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={Colors.placeholder}
                     value={nickname}
                     onChangeText={setNickname}
                     onFocus={() => setFocusedInput('nickname')}
@@ -143,7 +144,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                     <TextInput
                       style={styles.input}
                       placeholder="Yaş?"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={Colors.placeholder}
                       value={age}
                       onChangeText={setAge}
                       keyboardType="numeric"
@@ -156,11 +157,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                 {/* Country */}
                 <View style={[styles.inputGroup, styles.flex15]}>
                   <Text style={styles.label}>Ülke</Text>
-                  <View
+                  <TouchableOpacity
                     style={[
                       styles.inputContainer,
                       focusedInput === 'country' && styles.inputContainerFocused,
-                    ]}>
+                    ]}
+                    onPress={() => {
+                      setFocusedInput('country');
+                      setShowCountryModal(true);
+                    }}>
                     <IconWrapper
                       name="public"
                       size={24}
@@ -168,15 +173,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                       style={styles.inputIcon}
                       emojiFallback="🌍"
                     />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Seçiniz"
-                      placeholderTextColor="#999"
-                      value={country}
-                      onChangeText={setCountry}
-                      onFocus={() => setFocusedInput('country')}
-                      onBlur={() => setFocusedInput(null)}
-                    />
+                    <Text
+                      style={[
+                        styles.input,
+                        !country && { color: Colors.placeholder },
+                      ]}>
+                      {country || 'Seçiniz'}
+                    </Text>
                     <IconWrapper
                       name="expand-more"
                       size={20}
@@ -184,7 +187,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                       style={styles.dropdownIcon}
                       emojiFallback="▼"
                     />
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -206,7 +209,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                   <TextInput
                     style={styles.input}
                     placeholder="Şifreni oluştur"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={Colors.placeholder}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -240,12 +243,29 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
               {/* Login Link */}
               <Text style={styles.loginText}>
                 Zaten bir hesabın var mı?{' '}
-                <Text style={styles.loginLink}>Giriş Yap</Text>
+                <Text style={styles.loginLink} onPress={() => {
+                  if (navigation) {
+                    navigation.navigate('SignIn');
+                  }
+                }}>
+                  Giriş Yap
+                </Text>
               </Text>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Country Selection Modal */}
+      <CountryPicker
+        visible={showCountryModal}
+        selectedCountry={country}
+        onSelect={(selectedCountry: Country) => {
+          setCountry(`${selectedCountry.flag} ${selectedCountry.name}`);
+          setFocusedInput(null);
+        }}
+        onClose={() => setShowCountryModal(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -364,11 +384,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...CommonStyles.inputContainer,
     paddingHorizontal: Spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   inputContainerFocused: {
     ...CommonStyles.inputContainerFocused,
@@ -403,7 +418,7 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     marginTop: 16,
-    marginBottom: 16,
+    paddingBottom: Spacing.xl * 2, // Same bottom spacing as other screens
   },
   loginText: {
     textAlign: 'center',

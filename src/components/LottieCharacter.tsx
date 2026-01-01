@@ -2,6 +2,7 @@ import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { Character } from '../types';
+import GardenerCharacter from './GardenerCharacter';
 
 interface LottieCharacterProps {
   character: Character;
@@ -46,16 +47,15 @@ const LottieCharacter = forwardRef<LottieView, LottieCharacterProps>(({
   // const animationSource = require(`../assets/animations/${character}-${animation}.json`);
   const animationSource: any = null;
 
-  // Eğer Lottie dosyası yoksa, fallback göster (emoji)
+  // Eğer Lottie dosyası yoksa, SVG karakter göster
   if (!animationSource) {
     return (
-      <View style={[styles.container, { width: size, height: size }, style]}>
-        <View style={[styles.fallbackCircle, character === 'boy' ? styles.boyCircle : styles.girlCircle]}>
-          <Text style={styles.emojiContainer}>
-            {character === 'boy' ? '👦' : '👧'}
-          </Text>
-        </View>
-      </View>
+      <GardenerCharacter
+        character={character}
+        animation={animation}
+        size={size}
+        style={style}
+      />
     );
   }
 
