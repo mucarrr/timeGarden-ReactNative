@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,9 @@ import {
   Image,
   SafeAreaView,
   Animated,
+  Easing,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import PrimaryButton from './PrimaryButton';
 import BadgeCard from './BadgeCard';
 
 const { width, height } = Dimensions.get('window');
@@ -21,6 +21,7 @@ type PrayerTime = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 interface BadgeModalProps {
   visible: boolean;
   onClose: () => void;
+  onLevelUnlock?: () => void;
   badgeType?: string;
   character?: 'boy' | 'girl';
   level?: number;
@@ -30,16 +31,27 @@ interface BadgeModalProps {
 const BadgeModal: React.FC<BadgeModalProps> = ({ 
   visible, 
   onClose, 
+  onLevelUnlock,
   badgeType,
   character = 'boy',
   level = 1,
   prayerTime = 'fajr',
 }) => {
+  const [showUnlockMessage, setShowUnlockMessage] = useState(false);
+  
   // Bounce animation for speech bubble
   const bounceAnim = useRef(new Animated.Value(0)).current;
+  // Rotate animation for loader
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  // Scale animation for unlock message
+  const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
+      // Reset state when modal opens
+      setShowUnlockMessage(false);
+      scaleAnim.setValue(0);
+      
       // Start bounce animation when modal is visible
       const bounceLoop = Animated.loop(
         Animated.sequence([
@@ -57,9 +69,47 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
       );
       bounceLoop.start();
       
-      return () => bounceLoop.stop();
+      // Show unlock message after 2 seconds
+      const unlockTimer = setTimeout(() => {
+        setShowUnlockMessage(true);
+        
+        // Scale in animation for unlock message
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }).start();
+        
+        // Start rotate animation for loader
+        const rotateLoop = Animated.loop(
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          })
+        );
+        rotateLoop.start();
+        
+        // Navigate to level progress after 3 more seconds
+        const navigateTimer = setTimeout(() => {
+          if (onLevelUnlock) {
+            onLevelUnlock();
+          } else {
+            onClose();
+          }
+        }, 3000);
+        
+        return () => clearTimeout(navigateTimer);
+      }, 2000);
+      
+      return () => {
+        bounceLoop.stop();
+        clearTimeout(unlockTimer);
+      };
     }
-  }, [visible, bounceAnim]);
+  }, [visible, bounceAnim, rotateAnim, scaleAnim, onLevelUnlock, onClose]);
 
   // Vakit isimlerini Türkçe olarak döndür
   const getPrayerName = (prayer: PrayerTime): string => {
@@ -237,13 +287,42 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
           />
         </View>
 
-        {/* Action Button */}
+        {/* Unlock Message & Loader */}
         <View style={styles.buttonContainer}>
-          <PrimaryButton
-            title="Bahçeme Dön"
-            onPress={onClose}
-            showArrow={true}
-          />
+          {showUnlockMessage ? (
+            <Animated.View 
+              style={[
+                styles.unlockContainer,
+                { transform: [{ scale: scaleAnim }] }
+              ]}
+            >
+              <Text style={styles.unlockTitle}>🎉 Yeni Seviyenin Kilidi Açıldı!</Text>
+              <View style={styles.loaderContainer}>
+                <Animated.View
+                  style={[
+                    styles.loaderIcon,
+                    {
+                      transform: [
+                        {
+                          rotate: rotateAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', '360deg'],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Icon name="local-florist" size={40} color="#4CAF50" />
+                </Animated.View>
+                <Text style={styles.loaderText}>Yolculuğuna devam et...</Text>
+              </View>
+            </Animated.View>
+          ) : (
+            <View style={styles.waitingContainer}>
+              <Text style={styles.waitingText}>Rozetini kutla! 🌸</Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </Modal>
@@ -415,6 +494,52 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
+  },
+  unlockContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  unlockTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  loaderContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  loaderIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loaderText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  waitingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  waitingText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: '600',
   },
 });
 

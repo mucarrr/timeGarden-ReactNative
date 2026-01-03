@@ -19,6 +19,7 @@ import BadgeScreen from './screens/BadgeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import BadgesGalleryScreen from './screens/BadgesGalleryScreen';
+import LevelProgressScreen from './screens/LevelProgressScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { GardenState, Character, Language } from './types';
 import {
@@ -75,6 +76,16 @@ const MainTabs: React.FC<{
           />
         )}
       </Tab.Screen>
+      <Tab.Screen
+        name="Levels"
+        component={LevelProgressScreen}
+        options={{
+          tabBarLabel: 'Seviyeler',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="trending-up" size={size} color={color} />
+          ),
+        }}
+      />
       <Tab.Screen
         name="Badges"
         component={BadgesGalleryScreen}
@@ -287,6 +298,7 @@ const App: React.FC = () => {
             )}
           </Stack.Screen>
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="LevelProgress" component={LevelProgressScreen} />
           <Stack.Screen name="Badge">
             {props => <BadgeScreen {...props} badgeType={(props.route?.params as any)?.badgeType} />}
           </Stack.Screen>

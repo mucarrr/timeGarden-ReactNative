@@ -506,7 +506,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     setShowConfetti(true);
     
     // Create simple confetti animation
-    confettiAnims.current = Array.from({ length: 20 }, () => new Animated.Value(0));
+    confettiAnims.current = Array.from({ length: 30 }, () => new Animated.Value(0));
     const confettiAnimations = confettiAnims.current.map((anim, i) => {
       return Animated.timing(anim, {
         toValue: 1,
@@ -592,13 +592,6 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
 
       {/* Main Garden Area */}
       <View style={styles.gardenContainer}>
-        {/* Banner: 3 Tohum = 1 Çiçek */}
-        <View style={styles.banner}>
-          <Icon name="grain" size={16} color="#2E7D32" />
-          <Text style={styles.bannerText}>3 Tohum = 1 Çiçek</Text>
-          <Icon name="local-florist" size={16} color="#EC4899" />
-        </View>
-
         {/* Garden Plots */}
         <View ref={gardenPlotsRef} style={styles.gardenPlots}>
           {prayerTimes.map((prayerTime, index) => {
@@ -830,11 +823,17 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
       {showConfetti && (
         <View style={styles.confettiContainer} pointerEvents="none">
           <View style={styles.confettiFallback}>
-            {Array.from({ length: 20 }).map((_, i) => {
+            {Array.from({ length: 30 }).map((_, i) => {
               const anim = confettiAnims.current[i] || new Animated.Value(0);
-              const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#FFD700', '#FF8C00'];
-              const startX = (i * 5) % 100;
-              const rotation = i * 18;
+              const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#FFD700', '#FF8C00', '#A78BFA', '#34D399'];
+              const startX = (i * 3.5) % 100;
+              const rotation = i * 12;
+              // İrili ufaklı boyutlar
+              const sizes = [16, 20, 24, 28, 32, 36, 14, 18, 22, 26];
+              const size = sizes[i % sizes.length];
+              // Farklı şekiller için borderRadius
+              const isCircle = i % 3 === 0;
+              const isSquare = i % 3 === 1;
               
               return (
                 <Animated.View
@@ -844,29 +843,38 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
                     {
                       backgroundColor: colors[i % colors.length],
                       left: `${startX}%`,
+                      width: size,
+                      height: isSquare ? size : size * 0.6,
+                      borderRadius: isCircle ? size / 2 : isSquare ? 4 : 3,
                       transform: [
                         {
                           translateY: anim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: [-50, height + 50],
+                            outputRange: [-80, height + 100],
                           }),
                         },
                         {
                           translateX: anim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, (Math.random() - 0.5) * 200],
+                            inputRange: [0, 0.5, 1],
+                            outputRange: [0, (i % 2 === 0 ? 1 : -1) * 80, (i % 2 === 0 ? -1 : 1) * 120],
                           }),
                         },
                         {
                           rotate: anim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: ['0deg', `${rotation + 360}deg`],
+                            outputRange: ['0deg', `${rotation + 720}deg`],
+                          }),
+                        },
+                        {
+                          scale: anim.interpolate({
+                            inputRange: [0, 0.3, 0.7, 1],
+                            outputRange: [0.5, 1.2, 1, 0.8],
                           }),
                         },
                       ],
                       opacity: anim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [1, 1, 0],
+                        inputRange: [0, 0.2, 0.8, 1],
+                        outputRange: [0, 1, 1, 0],
                       }),
                     },
                   ]}
@@ -881,6 +889,10 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
       <BadgeModal
         visible={badgeModalVisible}
         onClose={() => setBadgeModalVisible(false)}
+        onLevelUnlock={() => {
+          setBadgeModalVisible(false);
+          navigation?.navigate('LevelProgress');
+        }}
         badgeType={badgeType}
         character={gardenState.character}
         level={userLevel}
@@ -1377,10 +1389,7 @@ const styles = StyleSheet.create({
   },
   confettiPiece: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    top: -20,
+    top: -40,
   },
   noFlowersContainer: {
     alignItems: 'center',
