@@ -124,15 +124,27 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onLoadingComplete }) => {
         <View style={styles.stagesContainer}>
           {/* Stage 1: Seed */}
           <View style={[styles.stage, styles.stageInactive]}>
-            <Text style={styles.seedIcon}>🌾</Text>
+            <Image
+              source={require('../../assets/characters/tohum.png')}
+              style={styles.seedIcon}
+              resizeMode="contain"
+            />
           </View>
           {/* Stage 2: Sprout */}
           <View style={[styles.stage, styles.stageInactive]}>
-            <Text style={styles.sproutIcon}>🌱</Text>
+            <Image
+              source={require('../../assets/characters/filiz.png')}
+              style={styles.sproutIcon}
+              resizeMode="contain"
+            />
           </View>
           {/* Stage 3: Flower (Active/Blooming) */}
           <Animated.View style={[styles.stage, flowerStyle]}>
-            <Text style={styles.flowerIcon}>🌸</Text>
+            <Image
+              source={require('../../assets/characters/cicek.png')}
+              style={styles.flowerIcon}
+              resizeMode="contain"
+            />
           </Animated.View>
         </View>
 
@@ -235,16 +247,16 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   seedIcon: {
-    fontSize: 32,
-    textAlign: 'center',
+    width: 40,
+    height: 40,
   },
   sproutIcon: {
-    fontSize: 40,
-    textAlign: 'center',
+    width: 48,
+    height: 48,
   },
   flowerIcon: {
-    fontSize: 48,
-    textAlign: 'center',
+    width: 56,
+    height: 56,
   },
   progressContainer: {
     width: '100%',

@@ -9,12 +9,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import IconWrapper from '../components/IconWrapper';
+
+const childrenImage = require('../../assets/characters/children.png');
 import PrimaryButton from '../components/PrimaryButton';
-import CountryPicker, { Country } from '../components/CountryPicker';
-import { Colors, CommonStyles, FontSizes, FontWeights, BorderRadius, Spacing } from '../styles/theme';
+import { Colors, CommonStyles, FontSizes, FontWeights, Spacing } from '../styles/theme';
 import { Language } from '../types';
 
 interface SignUpScreenProps {
@@ -26,12 +28,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
   
   const [nickname, setNickname] = useState('');
   const [age, setAge] = useState('');
-  const [country, setCountry] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<Language>('tr');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
-  const [showCountryModal, setShowCountryModal] = useState(false);
   const { t } = useTranslation();
 
   const handleSignUp = () => {
@@ -42,11 +42,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
     } else if (onComplete) {
       onComplete();
     }
-  };
-
-  const toggleLanguage = () => {
-    const newLang = language === 'tr' ? 'en' : 'tr';
-    setLanguage(newLang);
   };
 
   return (
@@ -62,41 +57,25 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
 
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <IconWrapper 
-                  name="local-florist" 
-                  size={28} 
-                  color={Colors.primary}
-                  emojiFallback="🌱"
-                />
-              </View>
-            </View>
-            <Text style={styles.headerTitle}>Vakit Bahçesi</Text>
-            <TouchableOpacity
-              style={styles.languageButton}
-              onPress={toggleLanguage}>
-              <Text style={[styles.flag, language === 'tr' && styles.flagActive]}>
-                🇹🇷
-              </Text>
-              <Text style={styles.languageDivider}>|</Text>
-              <Text style={[styles.flag, language === 'en' && styles.flagActive]}>
-                🇬🇧
-              </Text>
-            </TouchableOpacity>
+            <Image 
+              source={childrenImage} 
+              style={styles.childrenImage}
+              resizeMode="contain"
+            />
           </View>
 
-          {/* Main Content */}
+          {/* Main Content - Centered vertically */}
           <View style={styles.content}>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Aramıza Katıl</Text>
-              <Text style={styles.subtitle}>
-                Hoş geldin küçük bahçıvan! 🌱{'\n'}Kendi bahçeni kurmaya başlayalım mı?
-              </Text>
-            </View>
+            <View style={styles.centeredArea}>
+              <View style={styles.titleContainer}>
+                <Text style={styles.title}>Aramıza Katıl</Text>
+                <Text style={styles.subtitle}>
+                  Hoş geldin küçük bahçıvan! 🌱{'\n'}Kendi bahçeni kurmaya başlayalım mı?
+                </Text>
+              </View>
 
-            {/* Form */}
-            <View style={styles.form}>
+              {/* Form */}
+              <View style={styles.form}>
               {/* Nickname */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Takma Adın</Text>
@@ -124,7 +103,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                 </View>
               </View>
 
-              {/* Age and Country Row */}
+              {/* Age and Language Row */}
               <View style={styles.row}>
                 {/* Age */}
                 <View style={[styles.inputGroup, styles.flex1]}>
@@ -154,40 +133,41 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                   </View>
                 </View>
 
-                {/* Country */}
+                {/* Language */}
                 <View style={[styles.inputGroup, styles.flex15]}>
-                  <Text style={styles.label}>Ülke</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.inputContainer,
-                      focusedInput === 'country' && styles.inputContainerFocused,
-                    ]}
-                    onPress={() => {
-                      setFocusedInput('country');
-                      setShowCountryModal(true);
-                    }}>
-                    <IconWrapper
-                      name="public"
-                      size={24}
-                      color={Colors.primary}
-                      style={styles.inputIcon}
-                      emojiFallback="🌍"
-                    />
-                    <Text
+                  <Text style={styles.label}>Dil</Text>
+                  <View style={styles.languageSelector}>
+                    <TouchableOpacity
                       style={[
-                        styles.input,
-                        !country && { color: Colors.placeholder },
-                      ]}>
-                      {country || 'Seçiniz'}
-                    </Text>
-                    <IconWrapper
-                      name="expand-more"
-                      size={20}
-                      color={Colors.textLight}
-                      style={styles.dropdownIcon}
-                      emojiFallback="▼"
-                    />
-                  </TouchableOpacity>
+                        styles.languageOption,
+                        language === 'tr' && styles.languageOptionActive,
+                      ]}
+                      onPress={() => setLanguage('tr')}>
+                      <Text style={styles.languageFlag}>🇹🇷</Text>
+                      <Text
+                        style={[
+                          styles.languageText,
+                          language === 'tr' && styles.languageTextActive,
+                        ]}>
+                        Türkçe
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.languageOption,
+                        language === 'en' && styles.languageOptionActive,
+                      ]}
+                      onPress={() => setLanguage('en')}>
+                      <Text style={styles.languageFlag}>🇬🇧</Text>
+                      <Text
+                        style={[
+                          styles.languageText,
+                          language === 'en' && styles.languageTextActive,
+                        ]}>
+                        English
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
 
@@ -228,10 +208,11 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                   </TouchableOpacity>
                 </View>
               </View>
+              </View>
+            </View>
 
-              {/* Spacer */}
-              <View style={styles.spacer} />
-
+            {/* Button area - Fixed at bottom */}
+            <View style={styles.buttonArea}>
               {/* Sign Up Button */}
               <View style={styles.buttonWrapper}>
                 <PrimaryButton
@@ -255,17 +236,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Country Selection Modal */}
-      <CountryPicker
-        visible={showCountryModal}
-        selectedCountry={country}
-        onSelect={(selectedCountry: Country) => {
-          setCountry(`${selectedCountry.flag} ${selectedCountry.name}`);
-          setFocusedInput(null);
-        }}
-        onClose={() => setShowCountryModal(false)}
-      />
     </SafeAreaView>
   );
 };
@@ -294,67 +264,29 @@ const styles = StyleSheet.create({
     // Pattern effect - same as WelcomeScreen
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    justifyContent: 'center',
     paddingTop: 24,
     paddingBottom: 16,
     zIndex: 10,
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    display: 'none', // Hidden on mobile as per HTML
-  },
-  languageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.inputBackground,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.borderInput,
-    gap: Spacing.xs,
-  },
-  flag: {
-    fontSize: 18,
-    opacity: 0.5,
-  },
-  flagActive: {
-    opacity: 1,
-  },
-  languageDivider: {
-    fontSize: FontSizes.bodyTiny,
-    color: Colors.primary,
+  childrenImage: {
+    width: 140,
+    height: 140,
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     zIndex: 10,
+    justifyContent: 'space-between',
+    marginTop: -60,
+  },
+  centeredArea: {
+    flex: 1,
+    justifyContent: 'center',
   },
   titleContainer: {
     alignItems: 'center',
-    marginTop: 16,
     marginBottom: 32,
   },
   title: {
@@ -369,7 +301,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   form: {
-    flex: 1,
   },
   inputGroup: {
     marginBottom: 20,
@@ -395,8 +326,33 @@ const styles = StyleSheet.create({
     flex: 1,
     ...CommonStyles.input,
   },
-  dropdownIcon: {
-    marginLeft: 8,
+  languageSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  languageOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...CommonStyles.inputContainer,
+    paddingHorizontal: Spacing.md,
+    gap: 6,
+  },
+  languageOptionActive: {
+    borderColor: Colors.primary,
+  },
+  languageFlag: {
+    fontSize: 16,
+  },
+  languageText: {
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.medium,
+    color: Colors.textDark,
+  },
+  languageTextActive: {
+    color: Colors.primary,
+    fontWeight: FontWeights.bold,
   },
   eyeIcon: {
     marginLeft: 8,
@@ -412,13 +368,11 @@ const styles = StyleSheet.create({
   flex15: {
     flex: 1.5,
   },
-  spacer: {
-    minHeight: 20,
-    flexGrow: 1,
+  buttonArea: {
+    paddingTop: 20,
   },
   buttonWrapper: {
-    marginTop: 16,
-    paddingBottom: Spacing.xl * 2, // Same bottom spacing as other screens
+    marginBottom: Spacing.md,
   },
   loginText: {
     textAlign: 'center',
