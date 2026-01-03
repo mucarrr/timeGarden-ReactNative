@@ -149,65 +149,38 @@ const AbdestAlmaScreen: React.FC<AbdestAlmaScreenProps> = ({ navigation, charact
   };
 
   const renderStep = (step: AbdestStep) => {
-
-    if (step.fullWidth) {
-      return (
-        <View
-          key={step.id}
-          style={[
-            styles.stepCard,
-            styles.fullWidthCard,
-            { backgroundColor: Colors.surface },
-          ]}>
-          <View style={styles.fullWidthContent}>
-            <View
-              style={[
-                styles.iconContainer,
-                {
-                  backgroundColor: step.bgColor,
-                  width: 64,
-                  height: 64,
-                },
-              ]}>
-              <IconWrapper
-                name={step.icon}
-                size={32}
-                color={step.iconColor}
-              />
-            </View>
-            <View style={styles.fullWidthText}>
-              <View style={styles.stepBadge}>
-                <Text style={styles.stepBadgeText}>ADIM {step.id}</Text>
-              </View>
-              <Text style={styles.stepTitleLarge}>{step.title}</Text>
-              <Text style={styles.stepDescriptionLarge}>{step.description}</Text>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
+    // Tüm kutular fullWidth stiliyle alt alta
     return (
       <View
         key={step.id}
-        style={[styles.stepCard, { backgroundColor: Colors.surface }]}>
-        <View
-          style={[
-            styles.iconContainer,
-            {
-              backgroundColor: step.bgColor,
-              width: 56,
-              height: 56,
-            },
-          ]}>
-          <IconWrapper name={step.icon} size={28} color={step.iconColor} />
-        </View>
-        <View style={styles.stepContent}>
-          <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>ADIM {step.id}</Text>
+        style={[
+          styles.stepCard,
+          styles.fullWidthCard,
+          { backgroundColor: Colors.surface },
+        ]}>
+        <View style={styles.fullWidthContent}>
+          <View
+            style={[
+              styles.iconContainer,
+              {
+                backgroundColor: step.bgColor,
+                width: 64,
+                height: 64,
+              },
+            ]}>
+            <IconWrapper
+              name={step.icon}
+              size={32}
+              color={step.iconColor}
+            />
           </View>
-          <Text style={styles.stepTitle}>{step.title}</Text>
-          <Text style={styles.stepDescription}>{step.description}</Text>
+          <View style={styles.fullWidthText}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>ADIM {step.id}</Text>
+            </View>
+            <Text style={styles.stepTitleLarge}>{step.title}</Text>
+            <Text style={styles.stepDescriptionLarge}>{step.description}</Text>
+          </View>
         </View>
       </View>
     );
@@ -365,8 +338,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: Spacing.md,
   },
   stepCard: {
@@ -375,9 +347,6 @@ const styles = StyleSheet.create({
     ...Shadows.card,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-    width: '47%',
-    minHeight: 180,
     overflow: 'hidden',
     position: 'relative',
   },

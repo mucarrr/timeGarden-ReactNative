@@ -103,8 +103,8 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     prayerTimes.forEach(prayerTime => {
       const parcelState = getParcelState(prayerTime);
       
-      // Only animate if flowerCount is 3, 5, or 7
-      if (parcelState.flowerCount === 3 || parcelState.flowerCount === 5 || parcelState.flowerCount === 7) {
+      // Only animate if flowerCount is a multiple of 3 (3, 6, 9, 12, ...)
+      if (parcelState.flowerCount >= 3 && parcelState.flowerCount % 3 === 0) {
         if (!harvestButtonAnims.current[prayerTime]) {
           harvestButtonAnims.current[prayerTime] = new Animated.Value(1);
         }
@@ -131,7 +131,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
           pulseAnim.start();
         }
       } else {
-        // Reset animation if flowerCount is not 3, 5, or 7
+        // Reset animation if flowerCount is not a multiple of 3
         if (harvestButtonAnims.current[prayerTime]) {
           harvestButtonAnims.current[prayerTime].setValue(1);
         }
@@ -146,8 +146,17 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const loadState = async () => {
     try {
       const state = await loadGardenState();
+      console.log('=== LOAD STATE DEBUG ===');
+      console.log('Loaded state from server:', JSON.stringify(state, null, 2));
       if (state) {
+        // Her vakit için harvestCount'u kontrol et
+        Object.entries(state.prayers).forEach(([prayer, progress]) => {
+          console.log(`${prayer} harvestCount:`, progress.harvestCount);
+        });
+        console.log('Total badges:', state.totalBadges);
+        console.log('=== END LOAD STATE DEBUG ===');
         setGardenState(state);
+        onStateUpdate(state); // App.tsx'deki state'i de güncelle
       }
     } catch (error) {
       console.error('Error loading garden state:', error);
@@ -213,12 +222,9 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     };
   };
 
-  // Hasat eşiğini hesapla: seviye 1-2 için 3, seviye 3-4 için 5, seviye 5+ için 7
+  // Hasat eşiği: Her zaman 3 çiçek = 1 hasat
   const getHarvestThreshold = (): number => {
-    const level = calculateLevel();
-    if (level <= 2) return 3;
-    if (level <= 4) return 5;
-    return 7;
+    return 3; // Her zaman 3 çiçek
   };
 
   const handlePrayerComplete = async (prayerTime: PrayerTime) => {
@@ -242,6 +248,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     }
 
     const newProgress = {
+      ...currentProgress, // Tüm mevcut field'ları koru (harvestCount dahil)
       count: newCount,
       lastCompletedDate: getTodayDate(),
       state: newState,
@@ -353,10 +360,18 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
 
   // Handle harvest: Convert flowers to badge
   const handleHarvest = async (prayerTime: PrayerTime) => {
+    console.log('🌾 handleHarvest called for:', prayerTime);
     const parcelState = getParcelState(prayerTime);
     const harvestThreshold = getHarvestThreshold();
     
+    console.log('🌾 Parcel state:', {
+      flowerCount: parcelState.flowerCount,
+      harvestThreshold,
+      canHarvest: parcelState.flowerCount >= harvestThreshold
+    });
+    
     if (parcelState.flowerCount < harvestThreshold) {
+      console.log('❌ Cannot harvest: flowerCount < threshold');
       return; // Should not happen, but safety check
     }
 
@@ -432,9 +447,28 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
 
     // Update garden state: remove harvested flowers and increment harvestCount
     const currentProgress = gardenState.prayers[prayerTime];
+    
+    // DEBUG: harvestCount kontrolü
+    console.log('=== HARVEST DEBUG ===');
+    console.log('Prayer time:', prayerTime);
+    console.log('Current progress:', JSON.stringify(currentProgress, null, 2));
+    console.log('Current harvestCount:', currentProgress.harvestCount);
+    console.log('Current harvestCount type:', typeof currentProgress.harvestCount);
+    console.log('Full gardenState.prayers:', JSON.stringify(gardenState.prayers, null, 2));
+    
+    // harvestCount'u güvenli şekilde oku (undefined, null veya 0 olabilir)
+    const currentHarvestCount = typeof currentProgress.harvestCount === 'number' 
+      ? currentProgress.harvestCount 
+      : 0;
+    
     const newCount = currentProgress.count - (flowerCount * 3); // Remove harvested flowers (each flower = 3 count)
-    const newHarvestCount = (currentProgress.harvestCount || 0) + 1; // Bu vakitten kaçıncı hasat
+    const newHarvestCount = currentHarvestCount + 1; // Bu vakitten kaçıncı hasat
     const newTotalBadges = (gardenState.totalBadges || 0) + 1; // Toplam rozet sayısı (seviye için)
+    
+    console.log('Current harvestCount (normalized):', currentHarvestCount);
+    console.log('NEW harvestCount:', newHarvestCount);
+    console.log('NEW totalBadges:', newTotalBadges);
+    console.log('=== END DEBUG ===')
     
     const newProgress = {
       ...currentProgress,
@@ -569,6 +603,15 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
             const iconName = getPrayerIcon(prayerTime);
             const color = getPrayerColor(prayerTime);
             
+            // DEBUG: Hasat butonu görünürlük kontrolü
+            const shouldShowHarvestButton = parcelState.flowerCount >= 3 && parcelState.flowerCount % 3 === 0;
+            if (shouldShowHarvestButton) {
+              console.log(`✅ Harvest button should be visible for ${prayerTime}:`, {
+                flowerCount: parcelState.flowerCount,
+                condition: `${parcelState.flowerCount} >= 3 && ${parcelState.flowerCount} % 3 === 0`
+              });
+            }
+            
             const isEmpty = parcelState.currentProgress === 0 && parcelState.flowerCount === 0;
             
             return (
@@ -631,8 +674,8 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
                     </View>
                   )}
                   
-                  {/* Hasat Butonu - 3, 5 veya 7 çiçek olduğunda görünür */}
-                  {(parcelState.flowerCount === 3 || parcelState.flowerCount === 5 || parcelState.flowerCount === 7) && (
+                  {/* Hasat Butonu - 3'ün katları olduğunda görünür (3, 6, 9, 12, ...) */}
+                  {shouldShowHarvestButton && (
                     <Animated.View
                       style={[
                         styles.harvestButtonContainer,
@@ -646,8 +689,12 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
                       ]}>
                       <TouchableOpacity
                         style={styles.harvestButton}
-                        onPress={() => handleHarvest(prayerTime)}
-                        activeOpacity={0.8}>
+                        onPress={() => {
+                          console.log('🔘 Harvest button pressed for:', prayerTime);
+                          handleHarvest(prayerTime);
+                        }}
+                        activeOpacity={0.8}
+                        disabled={false}>
                         <View style={styles.harvestButtonGlowRing} />
                         <View style={styles.harvestButtonOuter}>
                           <View style={styles.harvestButtonInner}>

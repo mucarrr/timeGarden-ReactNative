@@ -200,7 +200,30 @@ export const gardenApi = {
         return false;
       }
       
+      // DEBUG: Gönderilen gardenState'i kontrol et
+      console.log('=== FRONTEND SYNC TO SERVER DEBUG ===');
+      if (gardenState.prayers) {
+        Object.entries(gardenState.prayers).forEach(([prayer, progress]) => {
+          console.log(`${prayer} harvestCount (sending):`, progress.harvestCount);
+        });
+      }
+      console.log('Total badges (sending):', gardenState.totalBadges);
+      
       const response = await gardenApi.updateGardenState(gardenState);
+      
+      // DEBUG: Server'dan gelen response'u kontrol et
+      console.log('Server response success:', response.success);
+      if (response.success && response.data && response.data.gardenState) {
+        const savedState = response.data.gardenState;
+        if (savedState.prayers) {
+          Object.entries(savedState.prayers).forEach(([prayer, progress]) => {
+            console.log(`${prayer} harvestCount (saved):`, progress.harvestCount);
+          });
+        }
+        console.log('Total badges (saved):', savedState.totalBadges);
+      }
+      console.log('=== END FRONTEND SYNC DEBUG ===');
+      
       return response.success;
     } catch (error) {
       console.error('Error syncing to server:', error);
@@ -219,7 +242,27 @@ export const gardenApi = {
       
       const response = await gardenApi.getGardenState();
       if (response.success && response.data) {
-        return response.data.gardenState;
+        const state = response.data.gardenState;
+        
+        // Eksik field'ları varsayılan değerlerle doldur (eski veriler için)
+        if (state && state.prayers) {
+          const prayerTimes = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
+          prayerTimes.forEach(prayer => {
+            if (state.prayers[prayer]) {
+              // harvestCount yoksa ekle
+              if (state.prayers[prayer].harvestCount === undefined) {
+                state.prayers[prayer].harvestCount = 0;
+              }
+            }
+          });
+          // totalBadges yoksa ekle
+          if (state.totalBadges === undefined) {
+            state.totalBadges = 0;
+          }
+        }
+        
+        console.log('Loaded and normalized garden state:', JSON.stringify(state, null, 2));
+        return state;
       }
       return null;
     } catch (error) {

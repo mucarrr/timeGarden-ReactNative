@@ -6,9 +6,16 @@ import { gardenApi } from '../services/api';
  */
 export const saveGardenState = async (state: GardenState): Promise<void> => {
   try {
-    await gardenApi.syncToServer(state);
+    console.log('=== SAVE GARDEN STATE ===');
+    const success = await gardenApi.syncToServer(state);
+    if (!success) {
+      console.error('❌ Failed to save garden state to server!');
+    } else {
+      console.log('✅ Garden state saved to server successfully');
+    }
+    console.log('=== END SAVE ===');
   } catch (error) {
-    console.error('Error saving garden state:', error);
+    console.error('❌ Error saving garden state:', error);
     // Server hatası olsa bile devam et (offline durumda)
   }
 };

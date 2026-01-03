@@ -47,7 +47,7 @@ const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
     {
       name: 'Sabah',
       time: '05:30',
-      icon: 'wb-sunny',
+      icon: 'wb-twilight', // Şafak - güneş ufukta (GardenScreen ile aynı)
       color: '#f59e0b',
       bgColor: '#fef3c7',
       bgColorDark: 'rgba(245, 158, 11, 0.1)',
@@ -55,7 +55,7 @@ const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
     {
       name: 'Öğle',
       time: '12:45',
-      icon: 'wb-sunny',
+      icon: 'wb-sunny', // Öğlen - tam güneş (GardenScreen ile aynı)
       color: '#f97316',
       bgColor: '#fed7aa',
       bgColorDark: 'rgba(249, 115, 22, 0.1)',
@@ -63,7 +63,7 @@ const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
     {
       name: 'İkindi',
       time: '16:20',
-      icon: 'wb-sunny',
+      icon: 'light-mode', // İkindi - hafif güneş (GardenScreen ile aynı)
       color: '#eab308',
       bgColor: '#fef9c3',
       bgColorDark: 'rgba(234, 179, 8, 0.1)',
@@ -71,7 +71,7 @@ const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
     {
       name: 'Akşam',
       time: '19:15',
-      icon: 'nightlight-round',
+      icon: 'nights-stay', // Akşam - hilal + yıldız (GardenScreen ile aynı)
       color: '#8b5cf6',
       bgColor: '#e9d5ff',
       bgColorDark: 'rgba(139, 92, 246, 0.1)',
@@ -79,7 +79,7 @@ const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
     {
       name: 'Yatsı',
       time: '21:00',
-      icon: 'nightlight-round',
+      icon: 'bedtime', // Yatsı - gece ay (GardenScreen ile aynı)
       color: '#6366f1',
       bgColor: '#c7d2fe',
       bgColorDark: 'rgba(99, 102, 241, 0.1)',

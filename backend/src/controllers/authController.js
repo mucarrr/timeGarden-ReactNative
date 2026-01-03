@@ -280,18 +280,38 @@ const updateGardenState = async (req, res) => {
       });
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { gardenState },
-      { new: true, runValidators: true }
-    );
+    // DEBUG: Gelen gardenState'i kontrol et
+    console.log('=== BACKEND UPDATE GARDEN STATE DEBUG ===');
+    console.log('User ID:', req.user.id);
+    if (gardenState.prayers) {
+      Object.entries(gardenState.prayers).forEach(([prayer, progress]) => {
+        console.log(`${prayer} harvestCount:`, progress.harvestCount);
+      });
+    }
+    console.log('Total badges:', gardenState.totalBadges);
+    console.log('=== END BACKEND DEBUG ===');
 
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'Kullanıcı bulunamadı'
       });
     }
+
+    // gardenState'i direkt atama (Mixed type için)
+    user.gardenState = gardenState;
+    await user.save();
+
+    // DEBUG: Kaydedilen gardenState'i kontrol et
+    console.log('=== BACKEND SAVED GARDEN STATE DEBUG ===');
+    if (user.gardenState.prayers) {
+      Object.entries(user.gardenState.prayers).forEach(([prayer, progress]) => {
+        console.log(`${prayer} harvestCount (saved):`, progress.harvestCount);
+      });
+    }
+    console.log('Total badges (saved):', user.gardenState.totalBadges);
+    console.log('=== END SAVED DEBUG ===');
 
     res.json({
       success: true,

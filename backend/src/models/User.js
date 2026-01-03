@@ -29,28 +29,20 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  // Garden progress data
+  // Garden progress data - Using Mixed type for flexibility with nested objects
   gardenState: {
-    prayers: {
-      fajr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
-      dhuhr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
-      asr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
-      maghrib: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
-      isha: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } }
-    },
-    character: {
-      type: String,
-      enum: ['boy', 'girl'],
-      default: 'boy'
-    },
-    isOnboardingComplete: {
-      type: Boolean,
-      default: false
-    },
-    // Toplam rozet sayısı (her hasat = 1 rozet = 1 seviye)
-    totalBadges: {
-      type: Number,
-      default: 0
+    type: mongoose.Schema.Types.Mixed,
+    default: {
+      prayers: {
+        fajr: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+        dhuhr: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+        asr: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+        maghrib: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+        isha: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 }
+      },
+      character: 'boy',
+      isOnboardingComplete: false,
+      totalBadges: 0
     }
   }
 }, {

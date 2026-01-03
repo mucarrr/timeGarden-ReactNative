@@ -92,7 +92,7 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
       case 'gardener':
         return `${prayerName} Namazı Bahçıvanı`;
       case 'master_gardener':
-        return `${prayerName} Namazı Usta Bahçıvanı`;
+        return `${prayerName} Namazı Uzman Bahçıvanı`;
       default:
         return `${prayerName} Namazı Çiçek Tohumcusu`;
     }
@@ -120,10 +120,10 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
         };
       case 'master_gardener':
         return {
-          title: 'Usta Bahçıvan',
-          subtitle: 'Usta Bahçıvan',
-          message: 'İnanılmaz! Bahçen muhteşem görünüyor. Artık bir',
-          highlight: 'Usta Bahçıvansın!',
+          title: 'Uzman Bahçıvan',
+          subtitle: 'Uzman Bahçıvan',
+          message: 'Bu vakit senin sayende dev bir bahçeye dönüştü. Sen bir',
+          highlight: 'Uzman Bahçıvansın!',
           icon: 'park',
           color: '#1B5E20',
         };

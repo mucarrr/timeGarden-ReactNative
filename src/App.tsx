@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useEffect, useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import OnboardingScreen from './screens/OnboardingScreen';
 import GardenScreen from './screens/GardenScreen';
@@ -31,10 +31,32 @@ const App: React.FC = () => {
   const [gardenState, setGardenState] = useState<GardenState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   useEffect(() => {
     initializeApp();
   }, []);
+
+  // Garden state'i yeniden yükle (yeni kullanıcı kaydı/girişi sonrası)
+  const refreshGardenState = async () => {
+    try {
+      console.log('🔄 Refreshing garden state from server...');
+      const savedState = await loadGardenState();
+      if (savedState) {
+        console.log('✅ Loaded garden state from server:', JSON.stringify(savedState, null, 2));
+        setGardenState(savedState);
+      } else {
+        const detectedLang = await detectLanguage();
+        const defaultState = getDefaultGardenState(detectedLang);
+        console.log('✅ Using default garden state');
+        setGardenState(defaultState);
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing garden state:', error);
+      const defaultState = getDefaultGardenState('tr');
+      setGardenState(defaultState);
+    }
+  };
 
   const initializeApp = async () => {
     try {
@@ -108,7 +130,19 @@ const App: React.FC = () => {
   // Don't wait for initialization - show SignUp immediately
   return (
     <ErrorBoundary>
-      <NavigationContainer>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => {
+          // Navigation ready
+        }}
+        onStateChange={(state) => {
+          // Welcome screen'e gidildiğinde state'i yeniden yükle
+          const currentRoute = navigationRef.current?.getCurrentRoute();
+          if (currentRoute?.name === 'Welcome') {
+            console.log('📍 Welcome screen detected, refreshing garden state...');
+            refreshGardenState();
+          }
+        }}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="SignUp" component={SignUpScreen} />
           <Stack.Screen name="SignIn" component={SignInScreen} />
