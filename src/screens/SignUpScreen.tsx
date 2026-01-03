@@ -10,9 +10,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import IconWrapper from '../components/IconWrapper';
+import { authApi, ApiErrorWithSuggestions } from '../services/api';
 
 const childrenImage = require('../../assets/characters/children.png');
 import PrimaryButton from '../components/PrimaryButton';
@@ -32,16 +35,76 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<Language>('tr');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const { t } = useTranslation();
 
-  const handleSignUp = () => {
-    // TODO: Implement sign up logic (save user data, etc.)
-    // After sign up, navigate to welcome screen
-    if (navigation) {
-      navigation.navigate('Welcome');
-    } else if (onComplete) {
-      onComplete();
+  const validateForm = (): boolean => {
+    if (!nickname.trim()) {
+      setError('Lütfen bir takma ad gir');
+      return false;
     }
+    if (nickname.trim().length < 2) {
+      setError('Takma ad en az 2 karakter olmalı');
+      return false;
+    }
+    if (!password) {
+      setError('Lütfen bir şifre oluştur');
+      return false;
+    }
+    if (password.length < 4) {
+      setError('Şifre en az 4 karakter olmalı');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSignUp = async () => {
+    setError(null);
+    setSuggestions([]); // Önerileri temizle
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authApi.register(
+        nickname.trim(),
+        password,
+        age || undefined,
+        language
+      );
+
+      if (response.success) {
+        // Navigate to welcome screen on success
+        if (navigation) {
+          navigation.navigate('Welcome');
+        } else if (onComplete) {
+          onComplete();
+        }
+      } else {
+        setError(response.message || 'Kayıt sırasında bir hata oluştu');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Bağlantı hatası. İnternet bağlantını kontrol et.');
+      
+      // Öneriler varsa göster
+      if (err instanceof ApiErrorWithSuggestions && err.suggestions?.length) {
+        setSuggestions(err.suggestions);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Öneri seçildiğinde
+  const handleSuggestionPress = (suggestion: string) => {
+    setNickname(suggestion);
+    setSuggestions([]);
+    setError(null);
   };
 
   return (
@@ -96,9 +159,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                     placeholder="Sana nasıl seslenelim?"
                     placeholderTextColor={Colors.placeholder}
                     value={nickname}
-                    onChangeText={setNickname}
+                    onChangeText={(text) => {
+                      setNickname(text);
+                      setError(null);
+                    }}
                     onFocus={() => setFocusedInput('nickname')}
                     onBlur={() => setFocusedInput(null)}
+                    editable={!isLoading}
                   />
                 </View>
               </View>
@@ -191,7 +258,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                     placeholder="Şifreni oluştur"
                     placeholderTextColor={Colors.placeholder}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      setError(null);
+                    }}
                     secureTextEntry={!showPassword}
                     onFocus={() => setFocusedInput('password')}
                     onBlur={() => setFocusedInput(null)}
@@ -208,6 +278,31 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {/* Error Message */}
+              {error && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+
+              {/* Nickname Suggestions */}
+              {suggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <Text style={styles.suggestionsTitle}>🌟 Bunları dene:</Text>
+                  <View style={styles.suggestionsRow}>
+                    {suggestions.map((suggestion) => (
+                      <TouchableOpacity
+                        key={suggestion}
+                        style={styles.suggestionChip}
+                        onPress={() => handleSuggestionPress(suggestion)}
+                        activeOpacity={0.7}>
+                        <Text style={styles.suggestionText}>{suggestion}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
               </View>
             </View>
 
@@ -215,10 +310,17 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation, onComplete }) =
             <View style={styles.buttonArea}>
               {/* Sign Up Button */}
               <View style={styles.buttonWrapper}>
-                <PrimaryButton
-                  title="Aramıza Katıl"
-                  onPress={handleSignUp}
-                />
+                {isLoading ? (
+                  <View style={styles.loadingButton}>
+                    <ActivityIndicator size="small" color={Colors.background} />
+                    <Text style={styles.loadingButtonText}>Kaydediliyor...</Text>
+                  </View>
+                ) : (
+                  <PrimaryButton
+                    title="Aramıza Katıl"
+                    onPress={handleSignUp}
+                  />
+                )}
               </View>
 
               {/* Login Link */}
@@ -373,6 +475,62 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     marginBottom: Spacing.md,
+  },
+  errorContainer: {
+    backgroundColor: '#FFEBEE',
+    padding: Spacing.md,
+    borderRadius: 12,
+    marginTop: Spacing.sm,
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: FontSizes.bodySmall,
+    fontWeight: FontWeights.medium,
+    textAlign: 'center',
+  },
+  suggestionsContainer: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+  },
+  suggestionsTitle: {
+    fontSize: FontSizes.bodySmall,
+    fontWeight: FontWeights.bold,
+    color: Colors.textDark,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  suggestionChip: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  suggestionText: {
+    color: '#FFFFFF',
+    fontSize: FontSizes.bodySmall,
+    fontWeight: FontWeights.bold,
+  },
+  loadingButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loadingButtonText: {
+    color: Colors.background,
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.bold,
   },
   loginText: {
     textAlign: 'center',

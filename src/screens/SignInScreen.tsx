@@ -9,10 +9,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import IconWrapper from '../components/IconWrapper';
 import PrimaryButton from '../components/PrimaryButton';
+import { authApi } from '../services/api';
 import { Colors, CommonStyles, FontSizes, FontWeights, BorderRadius, Spacing } from '../styles/theme';
 import { Language } from '../types';
 
@@ -23,20 +25,53 @@ interface SignInScreenProps {
 
 const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, onComplete }) => {
   
-  const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [language, setLanguage] = useState<Language>('tr');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
-  const handleSignIn = () => {
-    // TODO: Implement sign in logic (validate credentials, etc.)
-    // After sign in, navigate to welcome screen or garden screen
-    if (navigation) {
-      navigation.navigate('Welcome');
-    } else if (onComplete) {
-      onComplete();
+  const validateForm = (): boolean => {
+    if (!nickname.trim()) {
+      setError('Lütfen takma adını gir');
+      return false;
+    }
+    if (!password) {
+      setError('Lütfen şifreni gir');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSignIn = async () => {
+    setError(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authApi.login(nickname.trim(), password);
+
+      if (response.success) {
+        // Navigate to welcome/garden screen on success
+        if (navigation) {
+          navigation.navigate('Welcome');
+        } else if (onComplete) {
+          onComplete();
+        }
+      } else {
+        setError(response.message || 'Giriş sırasında bir hata oluştu');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Bağlantı hatası. İnternet bağlantını kontrol et.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -103,31 +138,34 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, onComplete }) =
 
               {/* Input Fields - Centered */}
               <View style={styles.inputsContainer}>
-                {/* Email/Username */}
+                {/* Nickname */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>E-posta veya Takma Adın</Text>
+                  <Text style={styles.label}>Takma Adın</Text>
                   <View
                     style={[
                       styles.inputContainer,
-                      focusedInput === 'email' && styles.inputContainerFocused,
+                      focusedInput === 'nickname' && styles.inputContainerFocused,
                     ]}>
                     <IconWrapper
-                      name="mail"
+                      name="sentiment-satisfied"
                       size={24}
                       color={Colors.primary}
                       style={styles.inputIcon}
-                      emojiFallback="📧"
+                      emojiFallback="😊"
                     />
                     <TextInput
                       style={styles.input}
-                      placeholder="E-posta veya takma adın"
+                      placeholder="Takma adını gir"
                       placeholderTextColor={Colors.placeholder}
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
+                      value={nickname}
+                      onChangeText={(text) => {
+                        setNickname(text);
+                        setError(null);
+                      }}
                       autoCapitalize="none"
-                      onFocus={() => setFocusedInput('email')}
+                      onFocus={() => setFocusedInput('nickname')}
                       onBlur={() => setFocusedInput(null)}
+                      editable={!isLoading}
                     />
                   </View>
                 </View>
@@ -152,10 +190,14 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, onComplete }) =
                       placeholder="Şifreni gir"
                       placeholderTextColor={Colors.placeholder}
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={(text) => {
+                        setPassword(text);
+                        setError(null);
+                      }}
                       secureTextEntry={!showPassword}
                       onFocus={() => setFocusedInput('password')}
                       onBlur={() => setFocusedInput(null)}
+                      editable={!isLoading}
                     />
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
@@ -169,6 +211,13 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, onComplete }) =
                     </TouchableOpacity>
                   </View>
                 </View>
+
+                {/* Error Message */}
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -178,10 +227,17 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, onComplete }) =
       {/* Bottom Section - Button and Link - Fixed at bottom */}
       <View style={styles.bottomSection}>
         <View style={styles.buttonWrapper}>
-          <PrimaryButton
-            title="Giriş Yap"
-            onPress={handleSignIn}
-          />
+          {isLoading ? (
+            <View style={styles.loadingButton}>
+              <ActivityIndicator size="small" color={Colors.background} />
+              <Text style={styles.loadingButtonText}>Giriş yapılıyor...</Text>
+            </View>
+          ) : (
+            <PrimaryButton
+              title="Giriş Yap"
+              onPress={handleSignIn}
+            />
+          )}
         </View>
 
         {/* Sign Up Link */}
@@ -339,6 +395,32 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     marginBottom: Spacing.md,
+  },
+  errorContainer: {
+    backgroundColor: '#FFEBEE',
+    padding: Spacing.md,
+    borderRadius: 12,
+    marginTop: Spacing.sm,
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: FontSizes.bodySmall,
+    fontWeight: FontWeights.medium,
+    textAlign: 'center',
+  },
+  loadingButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loadingButtonText: {
+    color: Colors.background,
+    fontSize: FontSizes.body,
+    fontWeight: FontWeights.bold,
   },
   signUpText: {
     textAlign: 'center',

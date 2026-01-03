@@ -115,31 +115,12 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="SignUp">
-            {props => (
-              <SignUpScreen
-                {...props}
-                onComplete={() => {
-                  console.log('SignUp complete');
-                }}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="SignIn">
-            {props => (
-              <SignInScreen
-                {...props}
-                onComplete={() => {
-                  console.log('SignIn complete');
-                }}
-              />
-            )}
-          </Stack.Screen>
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="SignIn" component={SignInScreen} />
           <Stack.Screen name="Welcome">
             {props => (
               <WelcomeScreen
                 {...props}
-                userName="Ahmet"
                 onContinue={() => {
                   if (props.navigation) {
                     props.navigation.navigate('Onboarding');
@@ -189,6 +170,7 @@ const App: React.FC = () => {
             {props => (
               <StartScreen
                 {...props}
+                character={gardenState?.character || 'boy'}
                 onComplete={() => {
                   if (props.navigation) {
                     props.navigation.navigate('Garden');
@@ -198,10 +180,10 @@ const App: React.FC = () => {
             )}
           </Stack.Screen>
           <Stack.Screen name="AbdestAlma">
-            {props => <AbdestAlmaScreen {...props} />}
+            {props => <AbdestAlmaScreen {...props} character={gardenState?.character || 'boy'} />}
           </Stack.Screen>
           <Stack.Screen name="NamazVakitleri">
-            {props => <NamazVakitleriScreen {...props} />}
+            {props => <NamazVakitleriScreen {...props} character={gardenState?.character || 'boy'} />}
           </Stack.Screen>
           <Stack.Screen name="Garden">
             {props => (

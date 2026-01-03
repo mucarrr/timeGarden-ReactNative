@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Image,
 } from 'react-native';
 import IconWrapper from '../components/IconWrapper';
 import {
@@ -17,9 +18,15 @@ import {
   BorderRadius,
   Shadows,
 } from '../styles/theme';
+import { Character } from '../types';
+
+// Karakter görselleri
+const boyImage = require('../../assets/characters/boy.png');
+const girlImage = require('../../assets/characters/girl-watering-flower.png');
 
 interface NamazVakitleriScreenProps {
   navigation?: any;
+  character?: Character;
 }
 
 interface PrayerTime {
@@ -33,6 +40,7 @@ interface PrayerTime {
 
 const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
   navigation,
+  character = 'boy',
 }) => {
   // Statik namaz vakitleri (sonradan API'den gelecek)
   const prayerTimes: PrayerTime[] = [
@@ -127,7 +135,14 @@ const NamazVakitleriScreen: React.FC<NamazVakitleriScreenProps> = ({
             emojiFallback="←"
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Namaz Vakitleri</Text>
+        <View style={styles.headerTitleContainer}>
+          <Image
+            source={character === 'boy' ? boyImage : girlImage}
+            style={styles.headerCharacterIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>Namaz Vakitleri</Text>
+        </View>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -281,15 +296,23 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     zIndex: 10,
   },
-  headerTitle: {
+  headerTitleContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  headerCharacterIcon: {
+    width: 32,
+    height: 32,
+  },
+  headerTitle: {
     fontSize: FontSizes.body,
     fontWeight: FontWeights.bold,
     color: Colors.primary,
-    textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    paddingRight: Spacing.xl,
   },
   headerSpacer: {
     width: 40,

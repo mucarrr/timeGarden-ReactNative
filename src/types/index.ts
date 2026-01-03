@@ -27,3 +27,11 @@ export interface Flower {
   createdAt: string;
 }
 
+export interface User {
+  id: string;
+  nickname: string;
+  age?: number;
+  language: Language;
+  gardenState: GardenState;
+}
+

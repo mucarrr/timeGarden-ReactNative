@@ -6,20 +6,27 @@ import {
   StyleSheet,
   SafeAreaView,
   Animated,
+  Image,
 } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import TopInfoButton from '../components/TopInfoButton';
 import IconWrapper from '../components/IconWrapper';
-import FlowerCharacter from '../components/FlowerCharacter';
 import { Colors, CommonStyles, FontSizes, FontWeights, Spacing, BorderRadius } from '../styles/theme';
+import { Character } from '../types';
+
+// Karakter görselleri
+const boyImage = require('../../assets/characters/boy.png');
+const girlImage = require('../../assets/characters/girl-watering-flower.png');
 
 interface StartScreenProps {
   navigation?: any;
+  character?: Character;
   onComplete?: () => void;
 }
 
 const StartScreen: React.FC<StartScreenProps> = ({
   navigation,
+  character = 'boy',
   onComplete,
 }) => {
   const hourglassRotate = useRef(new Animated.Value(0)).current;
@@ -113,9 +120,13 @@ const StartScreen: React.FC<StartScreenProps> = ({
 
       {/* Main Content */}
       <View style={styles.mainContent}>
-        {/* Flower Character */}
-        <View style={styles.flowerContainer}>
-          <FlowerCharacter size={160} animated={true} />
+        {/* Selected Character (Boy or Girl) */}
+        <View style={styles.characterContainer}>
+          <Image
+            source={character === 'boy' ? boyImage : girlImage}
+            style={styles.characterImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Speech Bubble */}
@@ -230,10 +241,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     marginTop: -Spacing.xl * 1.5,
   },
-  flowerContainer: {
+  characterContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.xl,
+  },
+  characterImage: {
+    width: 160,
+    height: 160,
   },
   speechBubbleContainer: {
     width: '100%',

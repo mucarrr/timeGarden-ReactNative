@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import PrimaryButton from '../components/PrimaryButton';
 import IconWrapper from '../components/IconWrapper';
 import FlowerCharacter from '../components/FlowerCharacter';
+import { authApi } from '../services/api';
 import { Colors, CommonStyles, FontSizes, FontWeights, BorderRadius, Spacing, Shadows } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
@@ -22,11 +23,23 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   navigation,
-  userName = 'Ahmet',
+  userName: propUserName,
   onContinue,
 }) => {
+  const [userName, setUserName] = useState(propUserName || 'Bahçıvan');
   const floatAnim = useRef(new Animated.Value(0)).current;
   const popInAnim = useRef(new Animated.Value(0)).current;
+
+  // Fetch user from storage on mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await authApi.getStoredUser();
+      if (user?.nickname) {
+        setUserName(user.nickname);
+      }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     // Pop-in animation
