@@ -1,30 +1,24 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GardenState } from '../types';
-
-const STORAGE_KEY = '@time_garden_state';
+import { gardenApi } from '../services/api';
 
 /**
- * Bahçe durumunu kaydeder
+ * Bahçe durumunu kaydeder (sadece server'a)
  */
 export const saveGardenState = async (state: GardenState): Promise<void> => {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    await gardenApi.syncToServer(state);
   } catch (error) {
     console.error('Error saving garden state:', error);
-    throw error;
+    // Server hatası olsa bile devam et (offline durumda)
   }
 };
 
 /**
- * Bahçe durumunu yükler
+ * Bahçe durumunu yükler (server'dan)
  */
 export const loadGardenState = async (): Promise<GardenState | null> => {
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data) as GardenState;
-    }
-    return null;
+    return await gardenApi.loadFromServer();
   } catch (error) {
     console.error('Error loading garden state:', error);
     return null;
@@ -36,14 +30,15 @@ export const loadGardenState = async (): Promise<GardenState | null> => {
  */
 export const getDefaultGardenState = (language: 'tr' | 'en'): GardenState => ({
   prayers: {
-    fajr: { count: 0, lastCompletedDate: '', state: 'seed' },
-    dhuhr: { count: 0, lastCompletedDate: '', state: 'seed' },
-    asr: { count: 0, lastCompletedDate: '', state: 'seed' },
-    maghrib: { count: 0, lastCompletedDate: '', state: 'seed' },
-    isha: { count: 0, lastCompletedDate: '', state: 'seed' },
+    fajr: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+    dhuhr: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+    asr: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+    maghrib: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
+    isha: { count: 0, lastCompletedDate: '', state: 'seed', harvestCount: 0 },
   },
   character: 'boy',
   language,
   isOnboardingComplete: false,
+  totalBadges: 0,
 });
 

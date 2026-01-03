@@ -78,7 +78,6 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               resizeMode="contain"
             />
           </Animated.View>
-          <Text style={styles.characterName}>{t('boy')}</Text>
         </TouchableOpacity>
 
         {/* Kız Karakter */}
@@ -101,7 +100,6 @@ const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               resizeMode="contain"
             />
           </Animated.View>
-          <Text style={styles.characterName}>{t('girl')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -162,11 +160,6 @@ const styles = StyleSheet.create({
   girlImage: {
     width: 150,
     height: 150,
-  },
-  characterName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
   },
 });
 

@@ -17,16 +17,19 @@ const { width } = Dimensions.get('window');
 
 interface WelcomeScreenProps {
   navigation?: any;
+  route?: any;
   userName?: string;
   onContinue?: () => void;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   navigation,
+  route,
   userName: propUserName,
   onContinue,
 }) => {
   const [userName, setUserName] = useState(propUserName || 'Bahçıvan');
+  const isReturningUser = route?.params?.isReturningUser || false;
   const floatAnim = useRef(new Animated.Value(0)).current;
   const popInAnim = useRef(new Animated.Value(0)).current;
 
@@ -75,7 +78,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     if (onContinue) {
       onContinue();
     } else if (navigation) {
-      navigation.navigate('Onboarding');
+      // Returning user direkt bahçeye gitsin, yeni user onboarding'e
+      if (isReturningUser) {
+        navigation.navigate('Garden');
+      } else {
+        navigation.navigate('Onboarding');
+      }
     }
   };
 
@@ -126,12 +134,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
           {/* Welcome Text */}
           <Text style={styles.welcomeTitle}>
-            Hoş Geldin{'\n'}
+            {isReturningUser ? 'Yeniden Hoş Geldin' : 'Hoş Geldin'}{'\n'}
             <Text style={styles.userName}>{userName}!</Text>
           </Text>
           <Text style={styles.welcomeText}>
-            Birlikte namazlarımızı kılarak, çok güzel bir bahçe oluşturmaya ne
-            dersin?
+            {isReturningUser 
+              ? 'Bahçen seni bekliyordu! Hadi kaldığımız yerden devam edelim.'
+              : 'Birlikte namazlarımızı kılarak, çok güzel bir bahçe oluşturmaya ne dersin?'
+            }
           </Text>
 
         </Animated.View>

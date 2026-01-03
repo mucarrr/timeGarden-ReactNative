@@ -32,11 +32,11 @@ const userSchema = new mongoose.Schema({
   // Garden progress data
   gardenState: {
     prayers: {
-      fajr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' } },
-      dhuhr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' } },
-      asr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' } },
-      maghrib: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' } },
-      isha: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' } }
+      fajr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
+      dhuhr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
+      asr: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
+      maghrib: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } },
+      isha: { count: { type: Number, default: 0 }, lastCompletedDate: String, state: { type: String, default: 'seed' }, harvestCount: { type: Number, default: 0 } }
     },
     character: {
       type: String,
@@ -46,6 +46,11 @@ const userSchema = new mongoose.Schema({
     isOnboardingComplete: {
       type: Boolean,
       default: false
+    },
+    // Toplam rozet sayısı (her hasat = 1 rozet = 1 seviye)
+    totalBadges: {
+      type: Number,
+      default: 0
     }
   }
 }, {

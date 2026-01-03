@@ -16,7 +16,6 @@ import NamazVakitleriScreen from './screens/NamazVakitleriScreen';
 import BadgeScreen from './screens/BadgeScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { GardenState, Character, Language } from './types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadGardenState,
   saveGardenState,
@@ -39,10 +38,6 @@ const App: React.FC = () => {
 
   const initializeApp = async () => {
     try {
-      // TEST: AsyncStorage'ı temizle (sadece test için, sonra kaldırılacak)
-      await AsyncStorage.clear();
-      console.log('AsyncStorage cleared for testing');
-      
       const detectedLang = await detectLanguage();
       changeLanguage(detectedLang);
 
@@ -117,22 +112,12 @@ const App: React.FC = () => {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="SignUp" component={SignUpScreen} />
           <Stack.Screen name="SignIn" component={SignInScreen} />
-          <Stack.Screen name="Welcome">
-            {props => (
-              <WelcomeScreen
-                {...props}
-                onContinue={() => {
-                  if (props.navigation) {
-                    props.navigation.navigate('Onboarding');
-                  }
-                }}
-              />
-            )}
-          </Stack.Screen>
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Onboarding">
             {props => (
               <OnboardingScreen
                 {...props}
+                initialLanguage={gardenState?.language || 'tr'}
                 onComplete={(character: Character, language: Language) => {
                   handleOnboardingComplete(character, language);
                   if (props.navigation) {

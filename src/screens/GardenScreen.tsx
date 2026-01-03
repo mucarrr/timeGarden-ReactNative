@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   Animated,
   Image,
+  Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -53,6 +54,8 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const [showConfetti, setShowConfetti] = useState(false);
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [badgeType, setBadgeType] = useState<string>('first_harvest');
+  const [badgePrayerTime, setBadgePrayerTime] = useState<PrayerTime>('fajr');
+  const [progressModalVisible, setProgressModalVisible] = useState(false);
   const confettiAnims = useRef<Animated.Value[]>([]);
   const [flyingFlowers, setFlyingFlowers] = useState<Array<{
     id: string;
@@ -164,15 +167,15 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const getPrayerIcon = (prayerTime: PrayerTime): string => {
     switch (prayerTime) {
       case 'fajr':
-        return 'wb-sunny'; // Morning sun
+        return 'wb-twilight'; // Şafak - güneş ufukta
       case 'dhuhr':
-        return 'wb-sunny'; // Noon sun
+        return 'wb-sunny'; // Öğlen - tam güneş
       case 'asr':
-        return 'wb-cloudy'; // Afternoon with clouds
+        return 'light-mode'; // İkindi - hafif güneş
       case 'maghrib':
-        return 'nightlight-round'; // Evening moon
+        return 'nights-stay'; // Akşam - hilal + yıldız
       case 'isha':
-        return 'nightlight-round'; // Night moon
+        return 'bedtime'; // Yatsı - gece ay
       default:
         return 'radio-button-unchecked';
     }
@@ -427,13 +430,16 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
       setFlyingFlowers(prev => prev.filter(f => !newFlyingFlowers.find(nf => nf.id === f.id)));
     });
 
-    // Update garden state: remove harvested flowers
+    // Update garden state: remove harvested flowers and increment harvestCount
     const currentProgress = gardenState.prayers[prayerTime];
     const newCount = currentProgress.count - (flowerCount * 3); // Remove harvested flowers (each flower = 3 count)
+    const newHarvestCount = (currentProgress.harvestCount || 0) + 1; // Bu vakitten kaçıncı hasat
+    const newTotalBadges = (gardenState.totalBadges || 0) + 1; // Toplam rozet sayısı (seviye için)
     
     const newProgress = {
       ...currentProgress,
       count: Math.max(0, newCount),
+      harvestCount: newHarvestCount,
     };
 
     const updatedPrayers = {
@@ -444,11 +450,23 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     const newGardenState: GardenState = {
       ...gardenState,
       prayers: updatedPrayers,
+      totalBadges: newTotalBadges,
     };
 
     setGardenState(newGardenState);
     await saveGardenState(newGardenState);
     onStateUpdate(newGardenState);
+
+    // Rozet tipini belirle: harvestCount'a göre
+    // 1. hasat = Çiçek Tohumcusu (first_harvest)
+    // 2. hasat = Bahçıvan (gardener)
+    // 3+ hasat = Usta Bahçıvan (master_gardener) - ileride eklenebilir
+    let badgeTypeForModal = 'first_harvest';
+    if (newHarvestCount === 2) {
+      badgeTypeForModal = 'gardener';
+    } else if (newHarvestCount >= 3) {
+      badgeTypeForModal = 'master_gardener';
+    }
 
     // Show confetti animation
     setShowConfetti(true);
@@ -469,7 +487,8 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
     setTimeout(() => {
       setShowConfetti(false);
       confettiAnims.current.forEach(anim => anim.setValue(0));
-      setBadgeType('first_harvest');
+      setBadgeType(badgeTypeForModal);
+      setBadgePrayerTime(prayerTime);
       setBadgeModalVisible(true);
     }, 2000);
   };
@@ -478,9 +497,9 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const totalFlowers = calculateTotalFlowers();
   const userName = 'Ahmet'; // TODO: Get from storage or props
 
-  // Seviye hesaplama: Her 10 çiçek = 1 seviye
+  // Seviye hesaplama: Her rozet = 1 seviye (başlangıç seviye 1)
   const calculateLevel = (): number => {
-    return Math.floor(totalFlowers / 10) + 1;
+    return (gardenState.totalBadges || 0) + 1;
   };
 
   const userLevel = calculateLevel();
@@ -513,10 +532,13 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
           </View>
         </View>
 
-        {/* Statistics Button */}
-        <TouchableOpacity style={styles.statisticsButton} activeOpacity={0.8}>
-          <Icon name="bar-chart" size={20} color="#4CAF50" />
-          <Text style={styles.statisticsText}>İstatistiklerim</Text>
+        {/* Progress Steps Button */}
+        <TouchableOpacity 
+          style={styles.statisticsButton} 
+          activeOpacity={0.8}
+          onPress={() => setProgressModalVisible(true)}>
+          <Icon name="trending-up" size={20} color="#4CAF50" />
+          <Text style={styles.statisticsText}>Rozet Yolculuğum</Text>
         </TouchableOpacity>
 
         {/* Flower Count Button */}
@@ -812,7 +834,131 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
         badgeType={badgeType}
         character={gardenState.character}
         level={userLevel}
+        prayerTime={badgePrayerTime}
       />
+
+      {/* Progress Steps Modal */}
+      <Modal
+        visible={progressModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setProgressModalVisible(false)}>
+        <View style={styles.progressModalOverlay}>
+          <View style={styles.progressModalContent}>
+            {/* Handle */}
+            <View style={styles.progressModalHandle} />
+            
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.progressModalCloseButton}
+              onPress={() => setProgressModalVisible(false)}
+              activeOpacity={0.7}>
+              <Icon name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+
+            {/* Title */}
+            <Text style={styles.progressModalTitle}>Yolculuğum</Text>
+            <Text style={styles.progressModalSubtitle}>Bahçende nasıl büyüyorsun?</Text>
+
+            {/* Progress Steps - Bottom to Top */}
+            <View style={styles.progressStepsContainer}>
+              {/* Step Line (vertical) */}
+              <View style={styles.progressStepLine} />
+
+              {/* Step 3: Rozet -> Seviye (En üstte) */}
+              <View style={styles.progressStep}>
+                <View style={[styles.progressStepCircle, styles.progressStepCircleGold]}>
+                  <Icon name="stars" size={28} color="#FFFFFF" />
+                </View>
+                <View style={styles.progressStepContent}>
+                  <View style={styles.progressStepBubble}>
+                    <Text style={styles.progressStepTitle}>Her Rozet = 1 Seviye</Text>
+                    <Text style={styles.progressStepDesc}>Rozet kazandıkça seviyen yükselir!</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Arrow Down */}
+              <View style={styles.progressArrowContainer}>
+                <Icon name="keyboard-arrow-down" size={32} color="#4CAF50" />
+              </View>
+
+              {/* Step 2: Çiçek -> Rozet (Ortada) */}
+              <View style={styles.progressStep}>
+                <View style={[styles.progressStepCircle, styles.progressStepCirclePink]}>
+                  <Icon name="local-florist" size={28} color="#FFFFFF" />
+                </View>
+                <View style={styles.progressStepContent}>
+                  <View style={styles.progressStepBubble}>
+                    <View style={styles.progressEquation}>
+                      <View style={styles.progressIconRow}>
+                        <Icon name="local-florist" size={20} color="#EC4899" />
+                        <Icon name="local-florist" size={20} color="#EC4899" />
+                        <Icon name="local-florist" size={20} color="#EC4899" />
+                      </View>
+                      <Icon name="arrow-forward" size={20} color="#4CAF50" />
+                      <Icon name="emoji-events" size={24} color="#FFD700" />
+                    </View>
+                    <Text style={styles.progressStepTitle}>3 Çiçek = 1 Rozet</Text>
+                    <Text style={styles.progressStepDesc}>3 çiçek hasat ettiğinde rozet kazanırsın!</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Arrow Down */}
+              <View style={styles.progressArrowContainer}>
+                <Icon name="keyboard-arrow-down" size={32} color="#4CAF50" />
+              </View>
+
+              {/* Step 1: Tohum -> Çiçek (En altta) */}
+              <View style={styles.progressStep}>
+                <View style={[styles.progressStepCircle, styles.progressStepCircleGreen]}>
+                  <Icon name="grain" size={28} color="#FFFFFF" />
+                </View>
+                <View style={styles.progressStepContent}>
+                  <View style={styles.progressStepBubble}>
+                    <View style={styles.progressEquation}>
+                      <View style={styles.progressIconRow}>
+                        <Icon name="grain" size={20} color="#8B5CF6" />
+                        <Icon name="grain" size={20} color="#8B5CF6" />
+                        <Icon name="grain" size={20} color="#8B5CF6" />
+                      </View>
+                      <Icon name="arrow-forward" size={20} color="#4CAF50" />
+                      <Icon name="local-florist" size={24} color="#EC4899" />
+                    </View>
+                    <Text style={styles.progressStepTitle}>3 Tohum = 1 Çiçek</Text>
+                    <Text style={styles.progressStepDesc}>Her vakit namazında 1 tohum ek!</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Current Stats */}
+            <View style={styles.progressStatsContainer}>
+              <View style={styles.progressStatItem}>
+                <Icon name="grain" size={24} color="#8B5CF6" />
+                <Text style={styles.progressStatValue}>{Object.values(gardenState.prayers).reduce((sum, p) => sum + (p.count % 3), 0)}</Text>
+                <Text style={styles.progressStatLabel}>Tohum</Text>
+              </View>
+              <View style={styles.progressStatItem}>
+                <Icon name="local-florist" size={24} color="#EC4899" />
+                <Text style={styles.progressStatValue}>{totalFlowers}</Text>
+                <Text style={styles.progressStatLabel}>Çiçek</Text>
+              </View>
+              <View style={styles.progressStatItem}>
+                <Icon name="emoji-events" size={24} color="#FFD700" />
+                <Text style={styles.progressStatValue}>{Math.floor(totalFlowers / 3)}</Text>
+                <Text style={styles.progressStatLabel}>Rozet</Text>
+              </View>
+              <View style={styles.progressStatItem}>
+                <Icon name="trending-up" size={24} color="#4CAF50" />
+                <Text style={styles.progressStatValue}>{userLevel}</Text>
+                <Text style={styles.progressStatLabel}>Seviye</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -1306,6 +1452,150 @@ const styles = StyleSheet.create({
   prayerSeedName: {
     fontSize: 10,
     fontWeight: '700',
+    color: '#6B7280',
+  },
+  // Progress Modal Styles
+  progressModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  progressModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 12,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+    maxHeight: height * 0.85,
+  },
+  progressModalHandle: {
+    width: 48,
+    height: 5,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  progressModalCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
+    zIndex: 10,
+  },
+  progressModalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  progressModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  progressStepsContainer: {
+    position: 'relative',
+    paddingVertical: 16,
+  },
+  progressStepLine: {
+    position: 'absolute',
+    left: 24,
+    top: 60,
+    bottom: 60,
+    width: 3,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+  },
+  progressStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressStepCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 2,
+  },
+  progressStepCircleGreen: {
+    backgroundColor: '#4CAF50',
+  },
+  progressStepCirclePink: {
+    backgroundColor: '#EC4899',
+  },
+  progressStepCircleGold: {
+    backgroundColor: '#F59E0B',
+  },
+  progressStepContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  progressStepBubble: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  progressEquation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  progressIconRow: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  progressStepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  progressStepDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  progressArrowContainer: {
+    alignItems: 'center',
+    paddingLeft: 10,
+    marginVertical: -4,
+  },
+  progressStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 16,
+  },
+  progressStatItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressStatValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  progressStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#6B7280',
   },
 });

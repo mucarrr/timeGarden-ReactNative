@@ -59,9 +59,9 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, onComplete }) =
       const response = await authApi.login(nickname.trim(), password);
 
       if (response.success) {
-        // Navigate to welcome/garden screen on success
+        // Navigate to welcome screen with returning user flag
         if (navigation) {
-          navigation.navigate('Welcome');
+          navigation.navigate('Welcome', { isReturningUser: true });
         } else if (onComplete) {
           onComplete();
         }

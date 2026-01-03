@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,15 @@ import {
   Dimensions,
   Image,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import PrimaryButton from './PrimaryButton';
+import BadgeCard from './BadgeCard';
 
 const { width, height } = Dimensions.get('window');
+
+type PrayerTime = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 
 interface BadgeModalProps {
   visible: boolean;
@@ -19,6 +24,7 @@ interface BadgeModalProps {
   badgeType?: string;
   character?: 'boy' | 'girl';
   level?: number;
+  prayerTime?: PrayerTime;
 }
 
 const BadgeModal: React.FC<BadgeModalProps> = ({ 
@@ -27,17 +33,99 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
   badgeType,
   character = 'boy',
   level = 1,
+  prayerTime = 'fajr',
 }) => {
+  // Bounce animation for speech bubble
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Start bounce animation when modal is visible
+      const bounceLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(bounceAnim, {
+            toValue: -8,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bounceAnim, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      bounceLoop.start();
+      
+      return () => bounceLoop.stop();
+    }
+  }, [visible, bounceAnim]);
+
+  // Vakit isimlerini Türkçe olarak döndür
+  const getPrayerName = (prayer: PrayerTime): string => {
+    const prayerNames: Record<PrayerTime, string> = {
+      fajr: 'Sabah',
+      dhuhr: 'Öğle',
+      asr: 'İkindi',
+      maghrib: 'Akşam',
+      isha: 'Yatsı',
+    };
+    return prayerNames[prayer];
+  };
+  // Rozet tipine göre başlık belirle
+  const getMainTitle = () => {
+    switch (badgeType) {
+      case 'gardener':
+      case 'master_gardener':
+        return 'Harika iş çıkardın!';
+      default:
+        return 'Harikasın!';
+    }
+  };
+
+  // Rozet tipine göre badge card başlığı (vakit + rozet adı)
+  const getBadgeCardTitle = () => {
+    const prayerName = getPrayerName(prayerTime);
+    switch (badgeType) {
+      case 'first_harvest':
+        return `${prayerName} Namazı Çiçek Tohumcusu`;
+      case 'gardener':
+        return `${prayerName} Namazı Bahçıvanı`;
+      case 'master_gardener':
+        return `${prayerName} Namazı Usta Bahçıvanı`;
+      default:
+        return `${prayerName} Namazı Çiçek Tohumcusu`;
+    }
+  };
+
   const getBadgeInfo = () => {
     switch (badgeType) {
       case 'first_harvest':
         return {
           title: 'Çiçek Tohumcusu',
-          subtitle: 'Sabah Namazı Tohum...',
+          subtitle: 'Çiçek Tohumcusu',
           message: 'Toprak seni çok sevdi. Artık bir',
           highlight: 'Çiçek Tohumcususun!',
           icon: 'local-florist',
           color: '#4CAF50',
+        };
+      case 'gardener':
+        return {
+          title: 'Bahçıvan',
+          subtitle: 'Bahçıvan',
+          message: 'Vay canına! Bahçen dillenmeye başladı. Artık gerçek bir',
+          highlight: 'Bahçıvansın!',
+          icon: 'yard',
+          color: '#2E7D32',
+        };
+      case 'master_gardener':
+        return {
+          title: 'Usta Bahçıvan',
+          subtitle: 'Usta Bahçıvan',
+          message: 'İnanılmaz! Bahçen muhteşem görünüyor. Artık bir',
+          highlight: 'Usta Bahçıvansın!',
+          icon: 'park',
+          color: '#1B5E20',
         };
       case 'prayer_master':
         return {
@@ -90,7 +178,7 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
           <Icon name="close" size={28} color="#1F2937" />
         </TouchableOpacity>
 
-        {/* Level Badge - Sağ üst */}
+        {/* Level Badge - Ortada üstte */}
         <View style={styles.levelBadgeContainer}>
           <View style={styles.levelBadge}>
             <View style={styles.levelDot} />
@@ -98,26 +186,38 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
           </View>
         </View>
 
-        {/* Character Image - Ortada büyük */}
-        <View style={styles.characterContainer}>
-          <View style={styles.characterImageWrapper}>
-            <Image
-              source={characterImage}
-              style={styles.characterImage}
-              resizeMode="contain"
-            />
+        {/* Main Content Area - Karakter büyük ve çerçevesiz */}
+        <View style={styles.mainContent}>
+          {/* Top Speech Bubble - Dinamik başlık */}
+          <View style={styles.topSpeechBubble}>
+            <Text style={styles.mainTitle}>{getMainTitle()}</Text>
+            <View style={styles.speechBubbleArrowDown} />
           </View>
-        </View>
 
-        {/* Title */}
-        <Text style={styles.mainTitle}>Harikasın!</Text>
+          {/* Character Container with Circle Bubble */}
+          <View style={styles.characterWrapper}>
+            {/* Character Image - Büyük ve çerçevesiz */}
+            <View style={styles.characterContainer}>
+              <Image
+                source={characterImage}
+                style={styles.characterImage}
+                resizeMode="contain"
+              />
+            </View>
 
-        {/* Message Bubble */}
-        <View style={styles.messageBubble}>
-          <Text style={styles.messageText}>
-            {badgeInfo.message}{' '}
-            <Text style={styles.messageHighlight}>{badgeInfo.highlight}</Text>
-          </Text>
+            {/* Circle Speech Bubble - Sağ üstte saksının üstünde, zıplama animasyonlu */}
+            <Animated.View 
+              style={[
+                styles.circleSpeechBubble,
+                { transform: [{ translateY: bounceAnim }] }
+              ]}>
+              <Text style={styles.circleMessageText}>
+                {badgeInfo.message}{' '}
+                <Text style={styles.messageHighlight}>{badgeInfo.highlight}</Text>
+              </Text>
+              <View style={styles.circleBubbleArrow} />
+            </Animated.View>
+          </View>
         </View>
 
         {/* Earned Badge Section */}
@@ -129,31 +229,21 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Badge Card */}
-          <View style={styles.badgeCard}>
-            <View style={styles.badgeIconContainer}>
-              <Icon name={badgeInfo.icon} size={32} color={badgeInfo.color} />
-            </View>
-            <View style={styles.badgeCardContent}>
-              <Text style={styles.badgeCardLabel}>TIME GARDEN</Text>
-              <Text style={styles.badgeCardTitle}>{badgeInfo.subtitle}</Text>
-              <TouchableOpacity style={styles.shareButton} activeOpacity={0.7}>
-                <Icon name="ios-share" size={16} color="#6B7280" />
-                <Text style={styles.shareButtonText}>Paylaş</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          {/* Badge Card Component */}
+          <BadgeCard
+            title={getBadgeCardTitle()}
+            badgeImage={require('../../assets/characters/cicek.png')}
+            isNew={true}
+          />
         </View>
 
         {/* Action Button */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.actionButton}
+          <PrimaryButton
+            title="Bahçeme Dön"
             onPress={onClose}
-            activeOpacity={0.8}>
-            <Text style={styles.actionButtonText}>Bahçeme Dön</Text>
-            <Icon name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+            showArrow={true}
+          />
         </View>
       </SafeAreaView>
     </Modal>
@@ -163,7 +253,7 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0FDF4', // Açık yeşil arka plan
+    backgroundColor: '#F0FDF4',
   },
   closeButton: {
     position: 'absolute',
@@ -206,49 +296,96 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     letterSpacing: 1,
   },
-  characterContainer: {
+  mainContent: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginTop: 80,
-    marginBottom: 20,
+    paddingTop: 90,
+    paddingBottom: 0,
   },
-  characterImageWrapper: {
-    width: width * 0.7,
-    height: width * 0.8,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#E8F5E9',
+  topSpeechBubble: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    marginBottom: 0,
+    position: 'relative',
   },
-  characterImage: {
-    width: '100%',
-    height: '100%',
+  speechBubbleArrowDown: {
+    position: 'absolute',
+    bottom: -10,
+    left: '50%',
+    marginLeft: -10,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderTopWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#FFFFFF',
   },
   mainTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 16,
   },
-  messageBubble: {
+  characterWrapper: {
+    flex: 1,
+    width: '100%',
+    position: 'relative',
+  },
+  characterContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: '100%',
+  },
+  characterImage: {
+    width: width * 1.0,
+    height: height * 0.52,
+  },
+  circleSpeechBubble: {
+    position: 'absolute',
+    top: 20,
+    right: 16,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: '#DCFCE7',
-    marginHorizontal: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 20,
-    marginBottom: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 10,
   },
-  messageText: {
-    fontSize: 16,
+  circleBubbleArrow: {
+    position: 'absolute',
+    bottom: 8,
+    left: 15,
+    width: 0,
+    height: 0,
+    borderTopWidth: 12,
+    borderRightWidth: 12,
+    borderTopColor: '#DCFCE7',
+    borderRightColor: 'transparent',
+    transform: [{ rotate: '15deg' }],
+  },
+  circleMessageText: {
+    fontSize: 13,
     color: '#374151',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 18,
   },
   messageHighlight: {
     color: '#16A34A',
@@ -275,74 +412,9 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontWeight: '600',
   },
-  badgeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  badgeIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F0FDF4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  badgeCardContent: {
-    flex: 1,
-  },
-  badgeCardLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#4CAF50',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  badgeCardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  shareButtonText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginLeft: 4,
-  },
   buttonContainer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 18,
-    borderRadius: 16,
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginRight: 8,
   },
 });
 

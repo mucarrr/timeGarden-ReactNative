@@ -266,9 +266,83 @@ const getMe = async (req, res) => {
   }
 };
 
+// @desc    Update garden state
+// @route   PUT /api/auth/garden
+// @access  Private
+const updateGardenState = async (req, res) => {
+  try {
+    const { gardenState } = req.body;
+
+    if (!gardenState) {
+      return res.status(400).json({
+        success: false,
+        message: 'Garden state gerekli'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { gardenState },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Kullanıcı bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Bahçe durumu güncellendi! 🌱',
+      data: {
+        gardenState: user.gardenState
+      }
+    });
+  } catch (error) {
+    console.error('UpdateGardenState error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Bahçe durumu güncellenirken bir hata oluştu'
+    });
+  }
+};
+
+// @desc    Get garden state
+// @route   GET /api/auth/garden
+// @access  Private
+const getGardenState = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Kullanıcı bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        gardenState: user.gardenState
+      }
+    });
+  } catch (error) {
+    console.error('GetGardenState error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Bahçe durumu alınamadı'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
-  getMe
+  getMe,
+  updateGardenState,
+  getGardenState
 };
 

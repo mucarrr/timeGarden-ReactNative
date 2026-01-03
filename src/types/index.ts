@@ -10,6 +10,7 @@ export interface PrayerProgress {
   count: number;
   lastCompletedDate: string; // YYYY-MM-DD format
   state: SeedState;
+  harvestCount?: number; // Bu vakitten kaç kez hasat yapıldı
 }
 
 export interface GardenState {
@@ -17,6 +18,7 @@ export interface GardenState {
   character: Character;
   language: Language;
   isOnboardingComplete: boolean;
+  totalBadges?: number; // Toplam rozet sayısı (her hasat = 1 rozet)
 }
 
 export interface Flower {

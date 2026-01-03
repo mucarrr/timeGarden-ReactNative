@@ -176,8 +176,62 @@ export const authApi = {
   },
 };
 
+// Garden API
+export const gardenApi = {
+  // Get garden state from server
+  getGardenState: async (): Promise<{ success: boolean; data?: { gardenState: GardenState } }> => {
+    return apiCall('/api/auth/garden');
+  },
+
+  // Update garden state on server
+  updateGardenState: async (gardenState: GardenState): Promise<{ success: boolean; data?: { gardenState: GardenState } }> => {
+    return apiCall('/api/auth/garden', {
+      method: 'PUT',
+      body: JSON.stringify({ gardenState }),
+    });
+  },
+
+  // Sync local state with server (save to server)
+  syncToServer: async (gardenState: GardenState): Promise<boolean> => {
+    try {
+      const isLoggedIn = await authApi.isLoggedIn();
+      if (!isLoggedIn) {
+        console.log('User not logged in, skipping server sync');
+        return false;
+      }
+      
+      const response = await gardenApi.updateGardenState(gardenState);
+      return response.success;
+    } catch (error) {
+      console.error('Error syncing to server:', error);
+      return false;
+    }
+  },
+
+  // Load garden state from server
+  loadFromServer: async (): Promise<GardenState | null> => {
+    try {
+      const isLoggedIn = await authApi.isLoggedIn();
+      if (!isLoggedIn) {
+        console.log('User not logged in, cannot load from server');
+        return null;
+      }
+      
+      const response = await gardenApi.getGardenState();
+      if (response.success && response.data) {
+        return response.data.gardenState;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error loading from server:', error);
+      return null;
+    }
+  },
+};
+
 // Export default api object
 export default {
   auth: authApi,
+  garden: gardenApi,
 };
 

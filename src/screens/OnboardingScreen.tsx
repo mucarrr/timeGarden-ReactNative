@@ -19,30 +19,34 @@ import { Colors, CommonStyles, FontSizes, FontWeights, Spacing, BorderRadius } f
 interface OnboardingScreenProps {
   navigation?: any;
   onComplete: (character: Character, language: Language) => void;
+  initialLanguage?: Language;
 }
 
-const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onComplete }) => {
+const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onComplete, initialLanguage }) => {
   const [character, setCharacter] = useState<Character>('boy');
-  const [language, setLanguage] = useState<Language>('en');
-  const [isLoading, setIsLoading] = useState(true);
+  const [language, setLanguage] = useState<Language>(initialLanguage || 'tr');
+  const [isLoading, setIsLoading] = useState(!initialLanguage);
   const { t } = useTranslation();
 
   useEffect(() => {
-    // Dil tespiti
-    const initLanguage = async () => {
-      try {
-        const detectedLang = await detectLanguage();
-        setLanguage(detectedLang);
-        changeLanguage(detectedLang);
-      } catch (error) {
-        console.error('Language detection error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initLanguage();
-  }, []);
+    // Dil prop'tan gelmiyorsa tespit et
+    if (!initialLanguage) {
+      const initLanguage = async () => {
+        try {
+          const detectedLang = await detectLanguage();
+          setLanguage(detectedLang);
+          changeLanguage(detectedLang);
+        } catch (error) {
+          console.error('Language detection error:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      initLanguage();
+    } else {
+      changeLanguage(initialLanguage);
+    }
+  }, [initialLanguage]);
 
   const handleContinue = () => {
     onComplete(character, language);
