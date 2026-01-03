@@ -531,9 +531,12 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
   const totalFlowers = calculateTotalFlowers();
   const userName = 'Ahmet'; // TODO: Get from storage or props
 
-  // Seviye hesaplama: Her rozet = 1 seviye (başlangıç seviye 1)
+  // Seviye hesaplama: Seviye = rozet sayısı (0 rozet = Seviye 0, 1 rozet = Seviye 1, 5 rozet = Seviye 5)
+  // Minimum seviye 1 olmalı (başlangıç seviye 1)
   const calculateLevel = (): number => {
-    return (gardenState.totalBadges || 0) + 1;
+    const totalBadges = gardenState.totalBadges || 0;
+    // Seviye = rozet sayısı, minimum 1
+    return Math.max(1, totalBadges);
   };
 
   const userLevel = calculateLevel();
@@ -572,7 +575,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
           activeOpacity={0.8}
           onPress={() => setProgressModalVisible(true)}>
           <Icon name="trending-up" size={20} color="#4CAF50" />
-          <Text style={styles.statisticsText}>Rozet Yolculuğum</Text>
+          <Text style={styles.statisticsText}>Bahçemi Nasıl Büyütürüm?</Text>
         </TouchableOpacity>
 
         {/* Flower Count Button */}
@@ -904,8 +907,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
             </TouchableOpacity>
 
             {/* Title */}
-            <Text style={styles.progressModalTitle}>Yolculuğum</Text>
-            <Text style={styles.progressModalSubtitle}>Bahçende nasıl büyüyorsun?</Text>
+            <Text style={styles.progressModalTitle}>Bahçeni Nasıl Büyütürsün?</Text>
 
             {/* Progress Steps - Bottom to Top */}
             <View style={styles.progressStepsContainer}>
@@ -915,7 +917,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
               {/* Step 3: Rozet -> Seviye (En üstte) */}
               <View style={styles.progressStep}>
                 <View style={[styles.progressStepCircle, styles.progressStepCircleGold]}>
-                  <Icon name="stars" size={28} color="#FFFFFF" />
+                  <Text style={styles.progressStepNumber}>3</Text>
                 </View>
                 <View style={styles.progressStepContent}>
                   <View style={styles.progressStepBubble}>
@@ -933,7 +935,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
               {/* Step 2: Çiçek -> Rozet (Ortada) */}
               <View style={styles.progressStep}>
                 <View style={[styles.progressStepCircle, styles.progressStepCirclePink]}>
-                  <Icon name="local-florist" size={28} color="#FFFFFF" />
+                  <Text style={styles.progressStepNumber}>2</Text>
                 </View>
                 <View style={styles.progressStepContent}>
                   <View style={styles.progressStepBubble}>
@@ -960,7 +962,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
               {/* Step 1: Tohum -> Çiçek (En altta) */}
               <View style={styles.progressStep}>
                 <View style={[styles.progressStepCircle, styles.progressStepCircleGreen]}>
-                  <Icon name="grain" size={28} color="#FFFFFF" />
+                  <Text style={styles.progressStepNumber}>1</Text>
                 </View>
                 <View style={styles.progressStepContent}>
                   <View style={styles.progressStepBubble}>
@@ -994,7 +996,7 @@ const GardenScreen: React.FC<GardenScreenProps> = ({
               </View>
               <View style={styles.progressStatItem}>
                 <Icon name="emoji-events" size={24} color="#FFD700" />
-                <Text style={styles.progressStatValue}>{Math.floor(totalFlowers / 3)}</Text>
+                <Text style={styles.progressStatValue}>{gardenState.totalBadges || 0}</Text>
                 <Text style={styles.progressStatLabel}>Rozet</Text>
               </View>
               <View style={styles.progressStatItem}>
@@ -1536,7 +1538,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
+    marginTop: 16,
   },
   progressModalSubtitle: {
     fontSize: 14,
@@ -1583,6 +1586,12 @@ const styles = StyleSheet.create({
   },
   progressStepCircleGold: {
     backgroundColor: '#F59E0B',
+  },
+  progressStepNumber: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   progressStepContent: {
     flex: 1,

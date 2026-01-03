@@ -75,9 +75,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   }, [floatAnim, popInAnim]);
 
   const handleContinue = () => {
-    // Returning user direkt bahçeye gitsin, yeni user onboarding'e
+    // Returning user direkt tab navigator'a gitsin, yeni user onboarding'e
     if (isReturningUser) {
-      navigation?.navigate('Garden');
+      navigation?.navigate('MainTabs');
     } else if (onContinue) {
       onContinue();
     } else {
